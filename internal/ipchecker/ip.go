@@ -28,14 +28,17 @@ type IpApiResponse struct {
 }
 
 func (info *IpApiResponse) GetPenaltyScore() float64 {
+	if API_IP_INFO_KEY == "" {
+		fmt.Println("Warning: API_IP_INFO_KEY is not set")
+	}
+	
+	isDirty := info.IsDatacenter || info.IsVPN || info.IsProxy || info.IsTor || info.IsAbuser || info.IsBogon
 
-    isDirty := info.IsDatacenter || info.IsVPN || info.IsProxy || info.IsTor || info.IsAbuser || info.IsBogon
+	if !isDirty || info.IsMobile || info.IsSatellite {
+		return 0
+	}
 
-    if !isDirty || info.IsMobile || info.IsSatellite {
-        return 0
-    }
-
-    return 100
+	return 100
 }
 
 func GetIpInfo(ip string) (*IpApiResponse, error) {
@@ -53,7 +56,7 @@ func GetIpInfo(ip string) (*IpApiResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() 
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error: status %d", resp.StatusCode)
