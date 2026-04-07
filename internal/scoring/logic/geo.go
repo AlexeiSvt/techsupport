@@ -15,6 +15,10 @@ func CalculateScoreForRegCountry(userRegCountry, dbRegCountry string, weights mo
 		return scoring.NoMatch
 	}
 
+	if Ucountry == "" && DCountry == "" {
+		return scoring.NoMatch
+	}
+
 	if strings.EqualFold(Ucountry, DCountry) {
 		return weights.RegCountry * scoring.IdealMatch
 	}
@@ -27,6 +31,10 @@ func CalculateScoreForRegCity(userRegCity, dbRegCity string, weights models.Weig
 	dCity := strings.TrimSpace(dbRegCity)
 
 	if uCity == "" || dCity == "" {
+		return scoring.NoMatch
+	}
+
+	if uCity == "" && dCity == "" {
 		return scoring.NoMatch
 	}
 

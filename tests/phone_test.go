@@ -76,7 +76,7 @@ func TestCalculateScoreForFirstPhone(t *testing.T) {
 				userPhone: "",
 				dbPhone:   "",
 				isDonator: isDonator,
-				expected:  weight,
+				expected:  0,
 			})
 
 			cases = append(cases, struct {

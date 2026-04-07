@@ -8,10 +8,13 @@ import (
 
 func CalculateScoreForFirstEmail(userFirstEmail string, dbFirstEmail string, weights models.Weights) float64 {
 
-	if userFirstEmail == "" || dbFirstEmail == "" {
+	if userFirstEmail == "" || dbFirstEmail == ""   {
         return scoring.NoMatch
     }
 	
+	if  userFirstEmail == "" && dbFirstEmail == "" {
+		return scoring.NoMatch
+	}
 	
 	if strings.EqualFold(userFirstEmail,dbFirstEmail) {
 		return weights.FirstEmail * scoring.IdealMatch
@@ -22,6 +25,10 @@ func CalculateScoreForFirstEmail(userFirstEmail string, dbFirstEmail string, wei
 func CalculateScoreForFirstPhone(userFirstPhone, dbFirstPhone string, weights models.Weights) float64 {
 
 	if userFirstPhone == "" || dbFirstPhone == "" {
+		return scoring.NoMatch
+	}
+
+	if userFirstPhone == "" && dbFirstPhone == "" {
 		return scoring.NoMatch
 	}
 
