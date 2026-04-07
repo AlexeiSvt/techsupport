@@ -3,6 +3,7 @@ package calculator
 import (
 	"techsupport/internal/models"
 	"techsupport/internal/scoring/logic"
+	"techsupport/internal/scoring/logic/transactions"
 )
 
 type ScoreCalculator interface {
@@ -46,7 +47,7 @@ func (c DevicesCalculator) Calculate(user models.UserClaim, db models.DBRecord, 
 
 type FirstTransactionScoreCalculator struct{}
 func (c FirstTransactionScoreCalculator) Calculate(user models.UserClaim, db models.DBRecord, weights models.Weights) float64 {
-    return logic.FirstTransactionScoreCalculator(db, user, weights)
+    return transactions.FirstTransactionScoreCalculator(db, user, weights)
 }
 
 func CalculateScore(user models.UserClaim, db models.DBRecord, weights models.Weights, calculators []ScoreCalculator) float64 {

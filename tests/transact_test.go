@@ -8,6 +8,7 @@ import (
 
 	"techsupport/internal/models"
 	"techsupport/internal/scoring/logic"
+	"techsupport/internal/scoring/logic/transactions"
 )
 
 func randomDBRecord(i int) models.DBRecord {
@@ -95,7 +96,7 @@ func Test1000Transactions(t *testing.T) {
 				t.Skip()
 			}
 
-			score := logic.FirstTransactionScoreCalculator(db, user, weights)
+			score := transactions.FirstTransactionScoreCalculator(db, user, weights)
 			t.Logf("tx_%d: score=%.3f, firstWeight=%.3f, amount=%.2f", i, score, weights.FirstTransaction, user.FirstTransaction.Amount)
 
 			// Проверка диапазона
@@ -106,7 +107,7 @@ func Test1000Transactions(t *testing.T) {
 
 			user.FirstTransaction.City = db.UserHistory.LastWindow[0].City
 			user.FirstTransaction.DeviceID = "unknown-device"
-			partialScore := logic.FirstTransactionScoreCalculator(db, user, weights)
+			partialScore := transactions.FirstTransactionScoreCalculator(db, user, weights)
 			if partialScore <= 0 {
 				t.Logf("DEBUG: partial match <=0: score=%.3f", partialScore)
 			}
