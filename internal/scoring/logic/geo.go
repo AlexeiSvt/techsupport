@@ -7,32 +7,32 @@ import (
 )
 
 func CalculateScoreForRegCountry(userRegCountry, dbRegCountry string, weights models.Weights) float64 {
-	
-	if userRegCountry == "" && dbRegCountry == "" {
+
+	Ucountry := strings.TrimSpace(userRegCountry)
+	DCountry := strings.TrimSpace(dbRegCountry)
+
+	if Ucountry == "" || DCountry == "" {
 		return scoring.NoMatch
 	}
 
-	if userRegCountry == "" || dbRegCountry == "" {
-		return scoring.NoMatch
-	}
-
-	if strings.EqualFold(userRegCountry, dbRegCountry) {
+	if strings.EqualFold(Ucountry, DCountry) {
 		return weights.RegCountry * scoring.IdealMatch
 	}
 	return scoring.NoMatch
 }
 
 func CalculateScoreForRegCity(userRegCity, dbRegCity string, weights models.Weights) float64 {
-	if userRegCity == "" && dbRegCity == "" {
+
+	uCity := strings.TrimSpace(userRegCity)
+	dCity := strings.TrimSpace(dbRegCity)
+
+	if uCity == "" || dCity == "" {
 		return scoring.NoMatch
 	}
 
-	if userRegCity == "" || dbRegCity == "" {
-		return scoring.NoMatch
-	}
-
-	if strings.EqualFold(userRegCity, dbRegCity) {
+	if strings.EqualFold(uCity, dCity) {
 		return weights.RegCity * scoring.IdealMatch
 	}
+
 	return scoring.NoMatch
 }
