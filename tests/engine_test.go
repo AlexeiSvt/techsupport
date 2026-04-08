@@ -36,7 +36,6 @@ func TestCalculateFinalScore_Production(t *testing.T) {
                         FirstDevice: "PC",
                         Devices:     []string{"PC"},
                         RegDate:     now,
-                        // Добавляем пустую транзакцию, чтобы калькулятор транзакций не паниковал
                         FirstTransaction: models.Transaction{
                             Amount: 0,
                         },
@@ -59,16 +58,12 @@ func TestCalculateFinalScore_Production(t *testing.T) {
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Увеличиваем таймаут для сетевых ожиданий, если они всё же есть
             defer func() {
                 if r := recover(); r != nil {
-                    // Если паника всё еще unimplemented, значит надо мокать GetIpInfo
                     t.Fatalf("\n🛑 КРИТИЧЕСКИЙ СБОЙ: %s\nПричина: %v\n\nСтек трейс:\n%s", tt.name, r, debug.Stack())
                 }
             }()
 
-            // ВАЖНО: Если ipchecker всё равно валит тест, 
-            // в реальной разработке GetIpInfo выносится в интерфейс.
             got := engine.CalculateFinalScore(tt.input)
 
             if math.Abs(got-tt.expected) > 0.01 {
