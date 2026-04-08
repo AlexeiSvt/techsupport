@@ -31,7 +31,7 @@ func CalculateScoreForFirstPhone(userFirstPhone, dbFirstPhone string, weights mo
 	if userFirstPhone == "" && dbFirstPhone == "" {
 		return scoring.NoMatch
 	}
-
+    
     uPhone := CleanPhoneNumber(userFirstPhone)
     dPhone := CleanPhoneNumber(dbFirstPhone)
 
@@ -39,18 +39,15 @@ func CalculateScoreForFirstPhone(userFirstPhone, dbFirstPhone string, weights mo
         return weights.Phone * scoring.IdealMatch
     }
 
-    const minLen = 7
-    if len(uPhone) >= minLen && len(dPhone) >= minLen {
-
-        checkLen := min(len(dPhone), len(uPhone))
-        if checkLen > 10 {
-            checkLen = 10
+        if len(uPhone) < scoring.MinLen || len(dPhone) < scoring.MinLen {
+            return scoring.NoMatch
         }
+
+        checkLen := min(min(len(dPhone), len(uPhone)), 10)
 
         if uPhone[len(uPhone)-checkLen:] == dPhone[len(dPhone)-checkLen:] {
             return weights.Phone * scoring.PartialMatch
         }
-    }
 
     return scoring.NoMatch
 }

@@ -6,19 +6,19 @@ import (
 	"time"
 )
 
-func isRegionOrDeviceKnown(tx models.Transaction, history models.UserHistory) bool {
-	// Оптимизировано: проверяем окна по очереди без append (экономим память)
-	for _, session := range history.FirstWindow {
-		if session.Country == tx.Country || session.DeviceID == tx.DeviceID {
-			return true
-		}
-	}
-	for _, session := range history.LastWindow {
-		if session.Country == tx.Country || session.DeviceID == tx.DeviceID {
-			return true
-		}
-	}
-	return false
+func isRegionAndDeviceKnown(tx models.Transaction, history models.UserHistory) bool {
+    for _, session := range history.FirstWindow {
+        if session.DeviceID == tx.DeviceID && (session.Country == tx.Country || session.City == tx.City) {
+            return true
+        }
+    }
+
+    for _, session := range history.LastWindow {
+        if session.DeviceID == tx.DeviceID && (session.Country == tx.Country || session.City == tx.City) {
+            return true
+        }
+    }
+    return false
 }
 
 func calculateWindowScore(tx models.Transaction, history []models.Session) float64 {

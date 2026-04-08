@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"techsupport/internal/ipchecker"
+	"time"
+)
 
 type InputData struct {
 	UserData UserData `json:"user_data"`
@@ -33,6 +36,7 @@ type UserClaim struct {
 	Phone            string      `json:"phone"`
 	FirstDevice      string      `json:"first_device"`
 	Devices          []string    `json:"devices"`
+	IPInfo *ipchecker.IpApiResponse `json:"ip_info"`
 	FirstTransaction Transaction `json:"first_transaction"`
 	RegDate          time.Time   `json:"reg_date"`
 }

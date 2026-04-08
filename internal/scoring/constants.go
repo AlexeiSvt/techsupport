@@ -35,6 +35,7 @@ const (
 	OneYearInHours          = 24.0 * 365 // One year in hours
 	MinIntervalHours = 2.0 // 2.0 is the minimum interval in hours
 	IdealMatchofMonths   = 2 // Ideal match if the registration dates are within 2 months
+	OneYearofMonths = 12 // One year is 12 months
 	PartialMatchofMonths = 4 // Partial match if the registration dates are within 4 months
 )
 
@@ -62,3 +63,15 @@ const (
 	SuddenMultiplier       = 5.0 // 5.0 is the multiplier for sudden high donations
 	FirstDonationThreshold = 5.0 // 5.0 is the threshold for the first donation for F2P users
 )
+
+const MinLen = 7 // 7 is the minimum length for phone numbers to be considered for partial matching
+
+const (
+	FullPenalty = 100
+	ForVPN = 70
+	ForProxy = 70
+	ForHosting = 40
+	ForDatacenter = 40
+)
+
+const ApiBaseURL = "https://api.ipapi.is"

@@ -9,7 +9,7 @@ import (
 
 func CalculateScoreForFirstDevice(userFirstDevice, dbFirstDevice string, weights models.Weights) float64 {
 
-	if (userFirstDevice == "" || dbFirstDevice == "" ) || (userFirstDevice == "" && dbFirstDevice == "" ) {
+	if userFirstDevice == "" || dbFirstDevice == "" {
 		return scoring.NoMatch
 	}
 

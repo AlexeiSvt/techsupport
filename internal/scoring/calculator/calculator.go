@@ -43,17 +43,14 @@ func (c FirstDeviceCalculator) Calculate(user models.UserData, db models.DBRecor
 
 type DevicesCalculator struct{}
 func (c DevicesCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) float64 {
-    // В логике DevicesCalculator обычно нужна вся запись БД и список девайсов из клейма
     return logic.CalculateScoreForDevices(user.UserClaim.Devices, db, weights)
 }
 
 type FirstTransactionScoreCalculator struct{}
 func (c FirstTransactionScoreCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) float64 {
-    // Вызываем переименованную функцию из пакета transactions, передавая UserClaim
     return transactions.CalculateFirstTransactionScore(db, user.UserClaim, weights)
 }
 
-// Теперь типы СОВПАДАЮТ: и функция, и интерфейс работают с models.UserData
 func CalculateScore(user models.UserData, db models.DBRecord, weights models.Weights, calculators []ScoreCalculator) float64 {
     total := 0.0
     for _, calc := range calculators {

@@ -6,13 +6,11 @@ import (
     "testing"
     "time"
     "os"
-
     "techsupport/internal/engine"
     "techsupport/internal/models"
 )
 
 func TestCalculateFinalScore_Production(t *testing.T) {
-    // Чтобы ipchecker не ругался на пустой ключ и не паниковал
     os.Setenv("API_IP_INFO_KEY", "test_key")
     defer os.Unsetenv("API_IP_INFO_KEY")
 

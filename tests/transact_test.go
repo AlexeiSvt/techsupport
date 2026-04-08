@@ -86,7 +86,6 @@ func Test1000Transactions(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	for i := range 1000 {
-		i := i // замыкание
 		t.Run(fmt.Sprintf("tx_%d", i), func(t *testing.T) {
 			db := randomDBRecord(i)
 			user := randomUserClaim()
