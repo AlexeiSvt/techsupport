@@ -22,7 +22,7 @@ func CalculateScoreForClaim(input models.InputData) float64 {
 	}
 
 	totalScore := interfaces.CalculateScore(
-		input.UserData.UserClaim,
+		input.UserData,
 		input.DBRecord,
 		weights,
 		calculators,

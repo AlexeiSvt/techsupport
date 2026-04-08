@@ -96,7 +96,7 @@ func Test1000Transactions(t *testing.T) {
 				t.Skip()
 			}
 
-			score := transactions.FirstTransactionScoreCalculator(db, user, weights)
+			score := transactions.CalculateFirstTransactionScore(db, user, weights)
 			t.Logf("tx_%d: score=%.3f, firstWeight=%.3f, amount=%.2f", i, score, weights.FirstTransaction, user.FirstTransaction.Amount)
 
 			// Проверка диапазона
@@ -107,7 +107,7 @@ func Test1000Transactions(t *testing.T) {
 
 			user.FirstTransaction.City = db.UserHistory.LastWindow[0].City
 			user.FirstTransaction.DeviceID = "unknown-device"
-			partialScore := transactions.FirstTransactionScoreCalculator(db, user, weights)
+			partialScore := transactions.CalculateFirstTransactionScore(db, user, weights)
 			if partialScore <= 0 {
 				t.Logf("DEBUG: partial match <=0: score=%.3f", partialScore)
 			}

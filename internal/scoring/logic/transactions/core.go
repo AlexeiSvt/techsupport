@@ -5,7 +5,7 @@ import (
 	"techsupport/internal/scoring"
 )
 
-func FirstTransactionScoreCalculator(dbRecord models.DBRecord, userClaim models.UserClaim, weights models.Weights) float64 {
+func CalculateFirstTransactionScore(dbRecord models.DBRecord, userClaim models.UserClaim, weights models.Weights) float64 {
 	if weights.FirstTransaction <= 0 {
 		return scoring.NoMatch
 	}

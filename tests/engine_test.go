@@ -1,67 +1,79 @@
 package tests
 
 import (
-	"math"
-	"os"
-	"runtime/debug"
-	"testing"
-	"time"
+    "math"
+    "runtime/debug"
+    "testing"
+    "time"
+    "os"
 
-	"techsupport/internal/engine"
-	"techsupport/internal/models"
+    "techsupport/internal/engine"
+    "techsupport/internal/models"
 )
 
 func TestCalculateFinalScore_Production(t *testing.T) {
-	// Устанавливаем дефолтный ключ, если его нет в системе
-	if os.Getenv("API_IP_INFO_KEY") == "" {
-		os.Setenv("API_IP_INFO_KEY", "test_vortex_key")
-	}
+    // Чтобы ipchecker не ругался на пустой ключ и не паниковал
+    os.Setenv("API_IP_INFO_KEY", "test_key")
+    defer os.Unsetenv("API_IP_INFO_KEY")
 
-	now := time.Now()
+    now := time.Now()
 
-	// Таблица тестов
-	tests := []struct {
-		name     string
-		input    models.InputData
-		expected float64
-	}{
-		{
-			name: "01. Full Match (Clean IP)",
-			input: models.InputData{
-				UserData: models.UserData{
-					IP: "127.0.0.1",
-					UserClaim: models.UserClaim{
-						AccTag: "Vortex#1", RegCountry: "RU", RegCity: "MSK",
-						FirstEmail: "v@v.com", Phone: "799", FirstDevice: "PC",
-						Devices: []string{"PC"}, RegDate: now,
-					},
-				},
-				DBRecord: models.DBRecord{
-					AccTag: "Vortex#1", RegCountry: "RU", RegCity: "MSK",
-					FirstEmail: "v@v.com", Phone: "799", FirstDevice: "PC",
-					Devices: []string{"PC"}, RegDate: now,
-				},
-			},
-			expected: 100.0,
-		},
-		// Здесь добавь остальные 29 кейсов...
-	}
+    tests := []struct {
+        name     string
+        input    models.InputData
+        expected float64
+    }{
+        {
+            name: "01. Full Match (Local Trust IP)",
+            input: models.InputData{
+                UserData: models.UserData{
+                    IP: "127.0.0.1",
+                    UserClaim: models.UserClaim{
+                        RegCountry:  "RU",
+                        RegCity:     "MSK",
+                        FirstEmail:  "test@mail.com",
+                        Phone:       "79991234567",
+                        FirstDevice: "PC",
+                        Devices:     []string{"PC"},
+                        RegDate:     now,
+                        // Добавляем пустую транзакцию, чтобы калькулятор транзакций не паниковал
+                        FirstTransaction: models.Transaction{
+                            Amount: 0,
+                        },
+                    },
+                },
+                DBRecord: models.DBRecord{
+                    RegCountry:  "RU",
+                    RegCity:     "MSK",
+                    FirstEmail:  "test@mail.com",
+                    Phone:       "79991234567",
+                    FirstDevice: "PC",
+                    Devices:     []string{"PC"},
+                    RegDate:     now,
+                    IsDonator:   false,
+                },
+            },
+            expected: 100.0,
+        },
+    }
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Отлов паники (unimplemented и прочее)
-			defer func() {
-				if r := recover(); r != nil {
-					t.Errorf("\n🔥 ПАНИКА: %s\nПричина: %v\nСтек:\n%s", tt.name, r, debug.Stack())
-				}
-			}()
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Увеличиваем таймаут для сетевых ожиданий, если они всё же есть
+            defer func() {
+                if r := recover(); r != nil {
+                    // Если паника всё еще unimplemented, значит надо мокать GetIpInfo
+                    t.Fatalf("\n🛑 КРИТИЧЕСКИЙ СБОЙ: %s\nПричина: %v\n\nСтек трейс:\n%s", tt.name, r, debug.Stack())
+                }
+            }()
 
-			got := engine.CalculateFinalScore(tt.input)
+            // ВАЖНО: Если ipchecker всё равно валит тест, 
+            // в реальной разработке GetIpInfo выносится в интерфейс.
+            got := engine.CalculateFinalScore(tt.input)
 
-			// Сравнение float с допуском
-			if math.Abs(got-tt.expected) > 0.01 {
-				t.Errorf("\n❌ %s: Ожидали %.2f, получили %.2f", tt.name, tt.expected, got)
-			}
-		})
-	}
+            if math.Abs(got-tt.expected) > 0.01 {
+                t.Errorf("\n❌ ОШИБКА РАСЧЕТА [%s]:\nОжидали: %.2f\nПолучили: %.2f", tt.name, tt.expected, got)
+            }
+        })
+    }
 }
