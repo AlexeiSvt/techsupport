@@ -1,12 +1,20 @@
-SentinelCore: AI-Driven Trust & Safety Intelligence System
-SentinelCore is a high-performance, microservice-based backend engine designed to automate and enhance user identity verification and account recovery processes. By combining Golang’s concurrency, gRPC for low-latency communication, and Local LLMs (Mistral) for private data analysis, SentinelCore transforms raw logs into actionable security intelligence.
+SentinelCore:
+AI-Driven Trust & Safety Intelligence System
+
+SentinelCore is a high-performance, microservice-based backend engine designed to automate and enhance user identity verification and account recovery processes. 
+
+By combining Golang’s concurrency, gRPC for low-latency communication, and Local LLMs (Gemma) for private data analysis, SentinelCore transforms raw logs into actionable security intelligence.
 
 Key Features
+
 1. Hybrid Scoring Engine (Truth-Verification)
 Dynamic Trust Score: A proprietary algorithm calculating the "truthfulness" of user-provided data against historical records.
 Visual Risk Indicators:
+
 🟢 Green (90-100%): High Trust / Automated Approval.
+
 🟡 Yellow (50-89%): Manual Review Required.
+
 🔴 Red (0-49%): High Risk / Probable Fraud.
 
 2. AI-Powered Intelligence
