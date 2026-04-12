@@ -1,29 +1,26 @@
 package transactions
 
 import (
-	"techsupport/core/internal/models"
 	"techsupport/core/internal/constants"
+	"techsupport/core/internal/models"
 	"time"
 )
 
 func isRegionAndDeviceKnown(tx models.Transaction, history models.UserHistory) bool {
-    for _, session := range history.FirstWindow {
-        if session.DeviceID == tx.DeviceID && (session.Country == tx.Country || session.City == tx.City) {
-            return true
-        }
-    }
-
-    for _, session := range history.LastWindow {
-        if session.DeviceID == tx.DeviceID && (session.Country == tx.Country || session.City == tx.City) {
-            return true
-        }
-    }
-    return false
+	check := func(sessions []models.Session) bool {
+		for _, s := range sessions {
+			if s.DeviceID == tx.DeviceID && (s.Country == tx.Country || s.City == tx.City) {
+				return true
+			}
+		}
+		return false
+	}
+	return check(history.FirstWindow) || check(history.LastWindow)
 }
 
 func calculateWindowScore(tx models.Transaction, history []models.Session) float64 {
 	if len(history) == 0 {
-		return constants.NoMatch
+		return 0
 	}
 
 	var maxScore float64
@@ -40,7 +37,7 @@ func calculateWindowScore(tx models.Transaction, history []models.Session) float
 	}
 
 	if maxScore < constants.MinScoreForPartialMatch {
-		return constants.NoMatch
+		return 0
 	}
 
 	const maxPossibleScore = constants.CityScore + constants.CountryScore + constants.DeviceScore + constants.IPScore

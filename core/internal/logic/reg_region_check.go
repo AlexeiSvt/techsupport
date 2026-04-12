@@ -2,45 +2,72 @@ package logic
 
 import (
 	"strings"
-	"techsupport/core/internal/models"
 	"techsupport/core/internal/constants"
+	"techsupport/core/internal/models"
+	"techsupport/core/pkg"
 )
 
-func CalculateScoreForRegCountry(userRegCountry, dbRegCountry string, weights models.Weights) float64 {
+var _ pkg.ScoreCalculator = (*RegCountryCalculator)(nil)
+var _ pkg.ScoreCalculator = (*RegCityCalculator)(nil)
 
-	Ucountry := strings.TrimSpace(userRegCountry)
-	DCountry := strings.TrimSpace(dbRegCountry)
+type RegCountryCalculator struct{}
 
-	if Ucountry == "" || DCountry == "" {
-		return constants.NoMatch
+func (c RegCountryCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	res := checkLocation(user.UserClaim.RegCountry, db.RegCountry, "Country")
+
+	return models.CalcResult{
+		Name:    "Registration Country Match",
+		Code:    "reg_country",
+		Value:   res.Value,
+		Weight:  weights.RegCountry,
+		Result:  res.Value * weights.RegCountry,
+		Status:  res.Status,
+		Comment: res.Comment,
 	}
-
-	if Ucountry == "" && DCountry == "" {
-		return constants.NoMatch
-	}
-
-	if strings.EqualFold(Ucountry, DCountry) {
-		return weights.RegCountry * constants.IdealMatch
-	}
-	return constants.NoMatch
 }
 
-func CalculateScoreForRegCity(userRegCity, dbRegCity string, weights models.Weights) float64 {
+// --- CITY CALCULATOR ---
 
-	uCity := strings.TrimSpace(userRegCity)
-	dCity := strings.TrimSpace(dbRegCity)
+type RegCityCalculator struct{}
 
-	if uCity == "" || dCity == "" {
-		return constants.NoMatch
+func (c RegCityCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	res := checkLocation(user.UserClaim.RegCity, db.RegCity, "City")
+
+	return models.CalcResult{
+		Name:    "Registration City Match",
+		Code:    "reg_city",
+		Value:   res.Value,
+		Weight:  weights.RegCity,
+		Result:  res.Value * weights.RegCity,
+		Status:  res.Status,
+		Comment: res.Comment,
+	}
+}
+
+// Универсальная функция для проверки текстовых локаций
+func checkLocation(userVal, dbVal, label string) rawCheckResult {
+	u := strings.TrimSpace(userVal)
+	d := strings.TrimSpace(dbVal)
+
+	if u == "" || d == "" {
+		return rawCheckResult{
+			Value:   constants.NoMatch,
+			Status:  "no_data",
+			Comment: label + " data is missing in claim or database",
+		}
 	}
 
-	if uCity == "" && dCity == "" {
-		return constants.NoMatch
+	if strings.EqualFold(u, d) {
+		return rawCheckResult{
+			Value:   constants.IdealMatch,
+			Status:  "match",
+			Comment: label + " matches exactly (case-insensitive)",
+		}
 	}
 
-	if strings.EqualFold(uCity, dCity) {
-		return weights.RegCity * constants.IdealMatch
+	return rawCheckResult{
+		Value:   constants.NoMatch,
+		Status:  "no_match",
+		Comment: label + " mismatch: " + u + " vs " + d,
 	}
-
-	return constants.NoMatch
 }

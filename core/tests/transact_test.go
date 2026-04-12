@@ -6,48 +6,45 @@ import (
 	"testing"
 	"time"
 
-	"techsupport/core/internal/models"
 	"techsupport/core/internal/logic"
 	"techsupport/core/internal/logic/transactions"
+	"techsupport/core/internal/models"
 )
+
+// Фиксируем сид один раз для всего пакета, чтобы не спамить в цикле
+var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func randomDBRecord(i int) models.DBRecord {
 	firstWindow := []models.Session{}
 	lastWindow := []models.Session{}
 	allPayments := []models.Transaction{}
 
-	numFirst := 1 + rand.Intn(3)
-	numLast := 1 + rand.Intn(3)
-	numPayments := rand.Intn(5)
+	numFirst := 1 + r.Intn(3)
+	numLast := 1 + r.Intn(3)
+	numPayments := r.Intn(5)
 
-	for range numFirst {
+	for k := 0; k < numFirst; k++ {
 		firstWindow = append(firstWindow, models.Session{
-			City:      fmt.Sprintf("City-%d", rand.Intn(10)),
-			Country:   fmt.Sprintf("Country-%d", rand.Intn(5)),
-			DeviceID:  fmt.Sprintf("device-%d", rand.Intn(50)),
-			SessionIP: fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255)),
-			ASN:       []string{"Rostelecom", "Beeline", "MTS", "Tele2"}[rand.Intn(4)],
+			City:      fmt.Sprintf("City-%d", r.Intn(10)),
+			Country:   fmt.Sprintf("Country-%d", r.Intn(5)),
+			DeviceID:  fmt.Sprintf("device-%d", r.Intn(50)),
+			SessionIP: fmt.Sprintf("192.168.%d.%d", r.Intn(255), r.Intn(255)),
 		})
 	}
 
-	for range numLast {
+	for k := 0; k < numLast; k++ {
 		lastWindow = append(lastWindow, models.Session{
-			City:      fmt.Sprintf("City-%d", rand.Intn(10)),
-			Country:   fmt.Sprintf("Country-%d", rand.Intn(5)),
-			DeviceID:  fmt.Sprintf("device-%d", rand.Intn(50)),
-			SessionIP: fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255)),
-			ASN:       []string{"OVH", "DigitalOcean", "Hetzner", "AWS"}[rand.Intn(4)],
+			City:      fmt.Sprintf("City-%d", r.Intn(10)),
+			Country:   fmt.Sprintf("Country-%d", r.Intn(5)),
+			DeviceID:  fmt.Sprintf("device-%d", r.Intn(50)),
+			SessionIP: fmt.Sprintf("192.168.%d.%d", r.Intn(255), r.Intn(255)),
 		})
 	}
 
 	for j := 0; j < numPayments; j++ {
 		allPayments = append(allPayments, models.Transaction{
-			City:      fmt.Sprintf("City-%d", rand.Intn(10)),
-			Country:   fmt.Sprintf("Country-%d", rand.Intn(5)),
-			DeviceID:  fmt.Sprintf("device-%d", rand.Intn(50)),
-			IP:        fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255)),
-			Timestamp: time.Now().Add(-time.Duration(rand.Intn(240)) * time.Hour).Format(time.RFC3339),
-			Amount:    float64(rand.Intn(20)), // донаты до 20$
+			Amount:    float64(r.Intn(20)),
+			Timestamp: time.Now().Add(-time.Duration(r.Intn(240)) * time.Hour).Format(time.RFC3339),
 		})
 	}
 
@@ -62,75 +59,55 @@ func randomDBRecord(i int) models.DBRecord {
 }
 
 func randomUserClaim() models.UserClaim {
-	cities := []string{"City-0", "City-1", "City-2", "City-3", "City-4", "City-5", "City-6", "City-7", "City-8", "City-9"}
-	countries := []string{"Country-0", "Country-1", "Country-2", "Country-3", "Country-4"}
-
 	return models.UserClaim{
+		AccTag: "test_user",
 		FirstTransaction: models.Transaction{
-			City:      cities[rand.Intn(len(cities))],
-			Country:   countries[rand.Intn(len(countries))],
-			DeviceID:  fmt.Sprintf("device-%d", rand.Intn(50)),
-			IP:        fmt.Sprintf("192.168.%d.%d", rand.Intn(255), rand.Intn(255)),
-			ASN:       []string{"Rostelecom", "Beeline", "MTS", "Tele2", "OVH", "AWS"}[rand.Intn(6)],
+			City:      fmt.Sprintf("City-%d", r.Intn(10)),
+			Country:   fmt.Sprintf("Country-%d", r.Intn(5)),
+			DeviceID:  fmt.Sprintf("device-%d", r.Intn(50)),
+			IP:        fmt.Sprintf("192.168.%d.%d", r.Intn(255), r.Intn(255)),
 			Timestamp: time.Now().Format(time.RFC3339),
-			Amount:    float64(rand.Intn(50)),
-		},
-		Devices: []string{
-			fmt.Sprintf("device-%d", rand.Intn(50)),
-			fmt.Sprintf("device-%d", rand.Intn(50)),
+			Amount:    float64(r.Intn(100)),
 		},
 	}
 }
 
 func Test1000Transactions(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	calc := transactions.FirstTransactionScoreCalculator{}
 
-	for i := range 1000 {
-		t.Run(fmt.Sprintf("tx_%d", i), func(t *testing.T) {
-			db := randomDBRecord(i)
-			user := randomUserClaim()
-			weights := logic.GetWeights(db.IsDonator)
+	for i := 0; i < 1000; i++ {
+		idx := i
+		t.Run(fmt.Sprintf("tx_%d", idx), func(t *testing.T) {
+			db := randomDBRecord(idx)
+			claim := randomUserClaim()
+			// ВАЖНО: Убедись, что GetWeights возвращает models.Weights
+			w := logic.GetWeights(db.IsDonator)
 
-			if weights.FirstTransaction <= 0 {
-				t.Skip()
+			user := models.UserData{
+				UserClaim: claim,
 			}
 
-			score := transactions.CalculateFirstTransactionScore(db, user, weights)
-			t.Logf("tx_%d: score=%.3f, firstWeight=%.3f, amount=%.2f", i, score, weights.FirstTransaction, user.FirstTransaction.Amount)
+			res := calc.Calculate(user, db, w)
 
-			// Проверка диапазона
-			if score < -500 || score > weights.FirstTransaction {
-				t.Errorf("score out of expected range: %f", score)
+			// ГАРАНТИРОВАННЫЙ ЛОГ: Никаких шансов для ошибки типов
+			msg := fmt.Sprintf("[%v] Score: %.2f | Status: %v", res.Code, res.Result, res.Status)
+			t.Log(msg)
+
+			if res.Result > w.FirstTransaction {
+				t.Errorf("Score %.2f > Weight %.2f", res.Result, w.FirstTransaction)
 			}
 
-
-			user.FirstTransaction.City = db.UserHistory.LastWindow[0].City
-			user.FirstTransaction.DeviceID = "unknown-device"
-			partialScore := transactions.CalculateFirstTransactionScore(db, user, weights)
-			if partialScore <= 0 {
-				t.Logf("DEBUG: partial match <=0: score=%.3f", partialScore)
-			}
-
-			if isSuddenHighDonation(user.FirstTransaction, db.UserHistory) {
-				t.Logf("DEBUG: sudden high donation, amount=%.2f, score=%.3f", user.FirstTransaction.Amount, score)
+			// Проверка на совпадение
+			if len(db.UserHistory.FirstWindow) > 0 {
+				user.UserClaim.FirstTransaction.City = db.UserHistory.FirstWindow[0].City
+				user.UserClaim.FirstTransaction.Country = db.UserHistory.FirstWindow[0].Country
+				user.UserClaim.FirstTransaction.DeviceID = db.UserHistory.FirstWindow[0].DeviceID
+				
+				matchRes := calc.Calculate(user, db, w)
+				if matchRes.Result == 0 {
+					t.Errorf("Expected positive score for matching data, got 0")
+				}
 			}
 		})
 	}
-}
-
-
-func isSuddenHighDonation(tx models.Transaction, history models.UserHistory) bool {
-	const suddenMultiplier = 5.0
-	const firstDonationThreshold = 5.0
-
-	if len(history.AllPayments) == 0 {
-		return tx.Amount >= firstDonationThreshold
-	}
-
-	var total float64
-	for _, p := range history.AllPayments {
-		total += p.Amount
-	}
-	avg := total / float64(len(history.AllPayments))
-	return tx.Amount > avg*suddenMultiplier
 }

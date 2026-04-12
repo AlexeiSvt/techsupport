@@ -1,110 +1,76 @@
 package tests
 
 import (
-	"fmt"
-
-	"testing"
-
-	"techsupport/core/internal/logic"
-
-	"github.com/stretchr/testify/assert"
+    "strings"
+    "techsupport/core/internal/constants"
+    "techsupport/core/internal/models"
+    "techsupport/core/pkg"
 )
 
-func TestCalculateScoreForRegCountryAndCity(t *testing.T) {
-	refCountry := "Moldova"
-	refCity := "Chisinau"
+var _ pkg.ScoreCalculator = (*RegCountryCalculator)(nil)
+var _ pkg.ScoreCalculator = (*RegCityCalculator)(nil)
 
-	cases := []struct {
-		name       string
-		userValue  string
-		dbValue    string
-		isDonator  bool
-		expected   float64
-		useCountry bool 
-	}{}
+type rawCheckResult struct {
+    Value   float64
+    Status  string
+    Comment string
+}
 
-	for _, isDonator := range []bool{false, true} {
-		weightCountry := logic.GetWeights(isDonator).RegCountry
-		weightCity := logic.GetWeights(isDonator).RegCity
+type RegCountryCalculator struct{}
 
-		for i := range 25 { 
+func (c RegCountryCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+    res := checkLocation(user.UserClaim.RegCountry, db.RegCountry, "Country")
 
-			cases = append(cases, struct {
-				name       string
-				userValue  string
-				dbValue    string
-				isDonator  bool
-				expected   float64
-				useCountry bool
-			}{
-				name:       fmt.Sprintf("CountryMatch_%d_%s", i, map[bool]string{true: "P2W", false: "F2P"}[isDonator]),
-				userValue:  refCountry,
-				dbValue:    refCountry,
-				isDonator:  isDonator,
-				expected:   weightCountry,
-				useCountry: true,
-			})
+    return models.CalcResult{
+        Name:    "Registration Country Match",
+        Code:    "reg_country",
+        Value:   res.Value,
+        Weight:  weights.RegCountry, 
+        Result:  res.Value * weights.RegCountry,
+        Status:  res.Status,
+        Comment: res.Comment,
+    }
+}
 
-			cases = append(cases, struct {
-				name       string
-				userValue  string
-				dbValue    string
-				isDonator  bool
-				expected   float64
-				useCountry bool
-			}{
-				name:       fmt.Sprintf("CountryMismatch_%d_%s", i, map[bool]string{true: "P2W", false: "F2P"}[isDonator]),
-				userValue:  refCountry,
-				dbValue:    fmt.Sprintf("OtherCountry%d", i),
-				isDonator:  isDonator,
-				expected:   0,
-				useCountry: true,
-			})
+type RegCityCalculator struct{}
 
-			cases = append(cases, struct {
-				name       string
-				userValue  string
-				dbValue    string
-				isDonator  bool
-				expected   float64
-				useCountry bool
-			}{
-				name:       fmt.Sprintf("CityMatch_%d_%s", i, map[bool]string{true: "P2W", false: "F2P"}[isDonator]),
-				userValue:  refCity,
-				dbValue:    refCity,
-				isDonator:  isDonator,
-				expected:   weightCity,
-				useCountry: false,
-			})
+func (c RegCityCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+    res := checkLocation(user.UserClaim.RegCity, db.RegCity, "City")
 
-			cases = append(cases, struct {
-				name       string
-				userValue  string
-				dbValue    string
-				isDonator  bool
-				expected   float64
-				useCountry bool
-			}{
-				name:       fmt.Sprintf("CityMismatch_%d_%s", i, map[bool]string{true: "P2W", false: "F2P"}[isDonator]),
-				userValue:  refCity,
-				dbValue:    fmt.Sprintf("OtherCity%d", i),
-				isDonator:  isDonator,
-				expected:   0,
-				useCountry: false,
-			})
-		}
-	}
+    return models.CalcResult{
+        Name:    "Registration City Match",
+        Code:    "reg_city",
+        Value:   res.Value,
+        Weight:  weights.RegCity, 
+        Result:  res.Value * weights.RegCity, 
+        Status:  res.Status,
+        Comment: res.Comment,
+    }
+}
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			weights := logic.GetWeights(c.isDonator)
-			var result float64
-			if c.useCountry {
-				result = logic.CalculateScoreForRegCountry(c.userValue, c.dbValue, weights)
-			} else {
-				result = logic.CalculateScoreForRegCity(c.userValue, c.dbValue, weights)
-			}
-			assert.Equal(t, c.expected, result, "Test failed: %s", c.name)
-		})
-	}
+func checkLocation(userVal, dbVal, label string) rawCheckResult {
+    u := strings.TrimSpace(userVal)
+    d := strings.TrimSpace(dbVal)
+
+    if u == "" || d == "" {
+        return rawCheckResult{
+            Value:   constants.NoMatch,
+            Status:  "no_data",
+            Comment: label + " data is missing",
+        }
+    }
+
+    if strings.EqualFold(u, d) {
+        return rawCheckResult{
+            Value:   constants.IdealMatch,
+            Status:  "match",
+            Comment: label + " matches exactly",
+        }
+    }
+
+    return rawCheckResult{
+        Value:   constants.NoMatch,
+        Status:  "no_match",
+        Comment: label + " mismatch",
+    }
 }

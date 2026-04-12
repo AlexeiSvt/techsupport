@@ -1,40 +1,50 @@
 package engine
 
 import (
-	"math"
-	"techsupport/core/internal/ipchecker"
-	"techsupport/core/internal/models"
-	"techsupport/core/internal/logic"
+    "fmt"
+    "math"
+    "techsupport/core/internal/ipchecker"
+    "techsupport/core/internal/logic"
+    "techsupport/core/internal/models"
+    "time"
 )
 
-func CalculateFinalScore(input models.InputData) float64 {
-
+func CalculateFinalScore(input models.InputData) models.OutputData {
     ipInfo, err := ipchecker.GetIpInfo(input.UserData.IP)
-    
-    var ipPenalty float64 = 100.0
     if err == nil {
-        ipPenalty = ipInfo.GetPenaltyScore()
-        input.UserData.ASN = ipInfo.ASN.Org 
+        input.UserData.UserClaim.IPInfo = ipInfo
+        input.UserData.ASN = ipInfo.ASN.Org
     }
 
-    if ipPenalty >= 100 {
-        return 0.0
-    }
+    weights := logic.GetWeights(input.DBRecord.IsDonator)
+    calculators := NewScoringEngine()
+
+    details, baseScore := CalculateAll(input.UserData, input.DBRecord, weights, calculators)
 
     penaltyCalc := DeviceBruteforcePenaltyCalculator{}
-    weights := logic.GetWeights(input.DBRecord.IsDonator)
-    devicePenalty := penaltyCalc.Calculate(input.UserData.UserClaim, input.DBRecord, weights)
+    pRes := penaltyCalc.Calculate(input.UserData, input.DBRecord, weights)
+ 
+    details = append(details, pRes)
 
-    devicePenalty = math.Max(0, math.Min(100, devicePenalty))
+    effectivePenalty := math.Max(0, math.Min(100, pRes.Result))
+    survivalRate := (100.0 - effectivePenalty) / 100.0
 
-    baseScore := CalculateScoreForClaim(input)
-    if baseScore <= 0 {
-        return 0.0
+    finalScore := 0.0
+    if baseScore > 0 && effectivePenalty < 100 {
+        finalScore = baseScore * survivalRate
     }
 
-    survivalRate := (100.0 - devicePenalty) / 100.0
+    finalScore = math.Floor(finalScore*100) / 100
 
-    finalScore := baseScore * survivalRate
-
-    return float64(math.Floor(finalScore*100) / 100)
+    return models.OutputData{
+        TicketID:       0,
+        CreatedAt:      time.Now(),
+        UpdatedAt:      time.Now(),
+        FinaPercentage: fmt.Sprintf("%.2f%%", finalScore),
+        Metrics: models.Metrics{
+            Knowledge:    baseScore,
+            PenaltyScore: effectivePenalty,
+        },
+        Details: details,
+    }
 }

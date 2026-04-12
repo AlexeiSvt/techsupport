@@ -10,11 +10,12 @@ type InputData struct {
 }
 
 type OutputData struct {
-	TicketID       string    `json:"ticket_id"`
+	TicketID       int64    `json:"ticket_id"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	FinaPercentage string    `json:"final_percentage"`
 	Metrics        Metrics   `json:"metrics"`
+	Details []CalcResult `json:"details,omitempty"`
 }
 
 type Metrics struct {

@@ -10,7 +10,7 @@ func GetWeights(isdonator bool) models.Weights{
 
 		return models.Weights{
 			RegDate:          constants.Solvent_Weight_RegDate,
-			RegCountry:       constants.Solvent_Weight_RegCountry,
+			RegCountry:       constants.Solvent_Weight_RegCountry, 
 			RegCity:          constants.Solvent_Weight_RegCity,
 			FirstEmail:       constants.Solvent_Weight_FirstEmail,
 			Phone:            constants.Solvent_Weight_Phone,

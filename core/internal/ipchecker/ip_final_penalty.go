@@ -13,7 +13,6 @@ func getAPIKey() string {
 
 func (info *IpApiResponse) GetPenaltyScore() float64 {
 	if info == nil {
-		// Fail closed: external IP reputation unavailable, treat as maximum risk
 		return constants.FullPenalty
 	}
 

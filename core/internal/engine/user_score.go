@@ -1,32 +1,35 @@
 package engine
 
 import (
-	"techsupport/core/internal/models"
-	"techsupport/core/internal/logic"
-
-	"techsupport/core/pkg"
+    "techsupport/core/internal/logic"
+    "techsupport/core/internal/logic/transactions"
+    "techsupport/core/internal/models"
+    "techsupport/core/pkg"
 )
 
-func CalculateScoreForClaim(input models.InputData) float64 {
-	weights := logic.GetWeights(input.DBRecord.IsDonator)
+func NewScoringEngine() []pkg.ScoreCalculator {
+    return []pkg.ScoreCalculator{
+        logic.RegDateCalculator{},
+        logic.RegCountryCalculator{},
+        logic.RegCityCalculator{},
+        logic.FirstEmailCalculator{},
+        logic.FirstPhoneCalculator{},
+        logic.FirstDeviceCalculator{},
+        logic.DevicesCalculator{},
+        transactions.FirstTransactionScoreCalculator{},
+    }
+}
 
-	calculators := []pkg.ScoreCalculator{
-		pkg.RegDateCalculator{},
-		pkg.RegCountryCalculator{},
-		pkg.RegCityCalculator{},
-		pkg.FirstEmailCalculator{},
-		pkg.FirstPhoneCalculator{},
-		pkg.FirstDeviceCalculator{},
-		pkg.DevicesCalculator{},
-		pkg.FirstTransactionScoreCalculator{},
-	}
+func CalculateAll(user models.UserData, db models.DBRecord, weights models.Weights, calculators []pkg.ScoreCalculator) ([]models.CalcResult, float64) {
+    var details []models.CalcResult
+    var total float64
 
-	totalScore := pkg.CalculateScore(
-		input.UserData,
-		input.DBRecord,
-		weights,
-		calculators,
-	)
+    for _, calc := range calculators {
+        res := calc.Calculate(user, db, weights)
+        
+        total += res.Result 
+        details = append(details, res)
+    }
 
-	return totalScore
+    return details, total
 }
