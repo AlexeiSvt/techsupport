@@ -58,14 +58,14 @@ func TestCalculateFinalScore_Production(t *testing.T) {
         t.Run(tt.name, func(t *testing.T) {
             defer func() {
                 if r := recover(); r != nil {
-                    t.Fatalf("\n🛑 КРИТИЧЕСКИЙ СБОЙ: %s\nПричина: %v\n\nСтек трейс:\n%s", tt.name, r, debug.Stack())
+                    t.Fatalf("\nCritical Error: %s\n Caused by: %v\n\nStack Trace:\n%s", tt.name, r, debug.Stack())
                 }
             }()
 
             got := engine.CalculateFinalScore(tt.input)
 
             if math.Abs(got-tt.expected) > 0.01 {
-                t.Errorf("\n❌ ОШИБКА РАСЧЕТА [%s]:\nОжидали: %.2f\nПолучили: %.2f", tt.name, tt.expected, got)
+                t.Errorf("\nCalculation Error [%s]:\nExpected: %.2f\nGot: %.2f", tt.name, tt.expected, got)
             }
         })
     }

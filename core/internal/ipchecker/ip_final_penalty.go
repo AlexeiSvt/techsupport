@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 	"strings"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 )
 
 func getAPIKey() string {
@@ -14,52 +14,52 @@ func getAPIKey() string {
 func (info *IpApiResponse) GetPenaltyScore() float64 {
 	if info == nil {
 		// Fail closed: external IP reputation unavailable, treat as maximum risk
-		return scoring.FullPenalty
+		return constants.FullPenalty
 	}
 
 	score := 0.0
 
 	switch {
 	case info.IsBogon:
-		return scoring.FullPenalty
+		return constants.FullPenalty
 	case info.IsAbuser:
-		return scoring.FullPenalty
+		return constants.FullPenalty
 	case info.IsTor:
-		return scoring.FullPenalty
+		return constants.FullPenalty
 	case info.IsCrawler:
-		return scoring.FullPenalty
+		return constants.FullPenalty
 	}
 
 	if info.IsDatacenter {
-		score += scoring.ForDatacenter
+		score += constants.ForDatacenter
 	}
 
 	if info.IsVPN {
-		score += scoring.ForVPN
+		score += constants.ForVPN
 	}
 
 	if info.IsProxy {
-		score += scoring.ForProxy
+		score += constants.ForProxy
 	}
 
 	if strings.EqualFold(info.ASN.Type, "hosting") {
-		score += scoring.ForHosting
+		score += constants.ForHosting
 	}
 
 	if strings.EqualFold(info.ASN.Type, "mobile") {
-		score *= scoring.PartialMatch
+		score *= constants.PartialMatch
 	}
 
 	if info.IsMobile {
-		score *= scoring.PartialMatch
+		score *= constants.PartialMatch
 	}
 
 	if info.IsSatellite {
-		score *= scoring.MostlyMatch
+		score *= constants.MostlyMatch
 	}
 
-	if score > scoring.FullPenalty {
-		score = scoring.FullPenalty
+	if score > constants.FullPenalty {
+		score = constants.FullPenalty
 	}
 
 	return score

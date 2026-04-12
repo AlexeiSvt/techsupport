@@ -4,7 +4,7 @@ import (
 	"math"
 	"techsupport/core/internal/ipchecker"
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring/logic"
+	"techsupport/core/internal/logic"
 )
 
 func CalculateFinalScore(input models.InputData) float64 {
@@ -18,7 +18,7 @@ func CalculateFinalScore(input models.InputData) float64 {
     }
 
     if ipPenalty >= 100 {
-        return 0
+        return 0.0
     }
 
     penaltyCalc := DeviceBruteforcePenaltyCalculator{}
@@ -29,12 +29,12 @@ func CalculateFinalScore(input models.InputData) float64 {
 
     baseScore := CalculateScoreForClaim(input)
     if baseScore <= 0 {
-        return 0 
+        return 0.0
     }
 
     survivalRate := (100.0 - devicePenalty) / 100.0
 
     finalScore := baseScore * survivalRate
 
-    return math.Floor(finalScore*100) / 100 
+    return float64(math.Floor(finalScore*100) / 100)
 }

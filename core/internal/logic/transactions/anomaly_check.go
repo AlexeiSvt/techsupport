@@ -2,7 +2,7 @@ package transactions
 
 import (
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 	"time"
 )
 
@@ -23,33 +23,33 @@ func isRegionAndDeviceKnown(tx models.Transaction, history models.UserHistory) b
 
 func calculateWindowScore(tx models.Transaction, history []models.Session) float64 {
 	if len(history) == 0 {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	var maxScore float64
 	for _, session := range history {
 		score := 0.0
-		if session.City == tx.City { score += scoring.CityScore }
-		if session.Country == tx.Country { score += scoring.CountryScore }
-		if session.DeviceID == tx.DeviceID { score += scoring.DeviceScore }
-		if session.SessionIP == tx.IP { score += scoring.IPScore }
+		if session.City == tx.City { score += constants.CityScore }
+		if session.Country == tx.Country { score += constants.CountryScore }
+		if session.DeviceID == tx.DeviceID { score += constants.DeviceScore }
+		if session.SessionIP == tx.IP { score += constants.IPScore }
 		
 		if score > maxScore {
 			maxScore = score
 		}
 	}
 
-	if maxScore < scoring.MinScoreForPartialMatch {
-		return scoring.NoMatch
+	if maxScore < constants.MinScoreForPartialMatch {
+		return constants.NoMatch
 	}
 
-	const maxPossibleScore = scoring.CityScore + scoring.CountryScore + scoring.DeviceScore + scoring.IPScore
+	const maxPossibleScore = constants.CityScore + constants.CountryScore + constants.DeviceScore + constants.IPScore
 	return maxScore / maxPossibleScore
 }
 
 func isSuddenHighDonation(tx models.Transaction, history models.UserHistory) bool {
 	if len(history.AllPayments) == 0 {
-		return tx.Amount >= scoring.FirstDonationThreshold
+		return tx.Amount >= constants.FirstDonationThreshold
 	}
 
 	var total float64
@@ -57,7 +57,7 @@ func isSuddenHighDonation(tx models.Transaction, history models.UserHistory) boo
 		total += p.Amount
 	}
 	avg := total / float64(len(history.AllPayments))
-	return tx.Amount > avg*scoring.SuddenMultiplier
+	return tx.Amount > avg*constants.SuddenMultiplier
 }
 
 func isHighFrequencyTransaction(allPayments []models.Transaction, current models.Transaction) bool {
@@ -66,7 +66,7 @@ func isHighFrequencyTransaction(allPayments []models.Transaction, current models
 		return false
 	}
 	
-	minInterval := time.Duration(scoring.MinIntervalHours * float64(time.Hour))
+	minInterval := time.Duration(constants.MinIntervalHours * float64(time.Hour))
 	for _, tx := range allPayments {
 		txTime, err := time.Parse(time.RFC3339, tx.Timestamp)
 		if err != nil {

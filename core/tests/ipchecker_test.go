@@ -18,7 +18,7 @@ func TestGetIpInfo(t *testing.T) {
 		expectedRisk   string
 	}{
 		{
-			name: "Чистая домашняя сеть",
+			name: "Clear home user",
 			apiResponse: ipchecker.IpApiResponse{
 				IP: "1.1.1.1",
 				IsDatacenter: false,
@@ -28,7 +28,7 @@ func TestGetIpInfo(t *testing.T) {
 			shouldError: false,
 		},
 		{
-			name: "Мобильный юзер (Траст)",
+			name: "Mobile user (Trusted IP)",
 			apiResponse: ipchecker.IpApiResponse{
 				IP: "8.8.8.8",
 				IsMobile: true,
@@ -37,7 +37,7 @@ func TestGetIpInfo(t *testing.T) {
 			shouldError: false,
 		},
 		{
-			name: "VPN детектед",
+			name: "VPN detected",
 			apiResponse: ipchecker.IpApiResponse{
 				IP: "45.1.1.1",
 				IsVPN: true,
@@ -46,7 +46,7 @@ func TestGetIpInfo(t *testing.T) {
 			shouldError: false,
 		},
 		{
-			name: "Критичный Абьюзер",
+			name: "Critical Abuser",
 			apiResponse: ipchecker.IpApiResponse{
 				IP: "66.6.6.6",
 				IsAbuser: true,
@@ -55,13 +55,13 @@ func TestGetIpInfo(t *testing.T) {
 			shouldError: false,
 		},
 		{
-			name: "Ошибка API (401 Unauthorized)",
+			name: "API Error (401 Unauthorized)",
 			apiResponse: ipchecker.IpApiResponse{},
 			httpStatus:  http.StatusUnauthorized,
 			shouldError: true,
 		},
 		{
-			name: "Богон (несуществующий IP)",
+			name: "Bogon (non-existent IP)",
 			apiResponse: ipchecker.IpApiResponse{
 				IsBogon: true,
 			},
@@ -72,7 +72,6 @@ func TestGetIpInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 1. Создаем фейковый сервер
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.httpStatus)
 				json.NewEncoder(w).Encode(tt.apiResponse)
@@ -85,17 +84,17 @@ func TestGetIpInfo(t *testing.T) {
 
 			if tt.shouldError {
 				if err == nil {
-					t.Errorf("Ожидалась ошибка, но её нет")
+					t.Errorf("Expected error, but none occurred")
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("Неожиданная ошибка: %v", err)
+				t.Errorf("Unexpected error: %v", err)
 			}
 
 			if res.IsDatacenter != tt.apiResponse.IsDatacenter {
-				t.Errorf("Ожидалось IsDatacenter=%v, получили %v", tt.apiResponse.IsDatacenter, res.IsDatacenter)
+				t.Errorf("Expected IsDatacenter=%v, got %v", tt.apiResponse.IsDatacenter, res.IsDatacenter)
 			}
 		})
 	}

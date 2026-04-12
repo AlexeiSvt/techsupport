@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 )
 
-var apiBaseURL = scoring.ApiBaseURL
+var apiBaseURL = constants.ApiBaseURL
 
 func GetIpInfoWithContext(ctx context.Context, ip string) (*IpApiResponse, error) {
 	ip = strings.TrimSpace(ip)

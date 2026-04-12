@@ -2,7 +2,7 @@ package engine
 
 import (
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring/logic"
+	"techsupport/core/internal/logic"
 
 	"techsupport/core/pkg"
 )

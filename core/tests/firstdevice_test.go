@@ -3,7 +3,7 @@ package tests
 import (
 	"fmt"
 
-	"techsupport/core/internal/scoring/logic"
+	"techsupport/core/internal/logic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

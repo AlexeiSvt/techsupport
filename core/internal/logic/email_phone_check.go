@@ -3,53 +3,53 @@ package logic
 import (
 	"strings"
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 )
 
 func CalculateScoreForFirstEmail(userFirstEmail string, dbFirstEmail string, weights models.Weights) float64 {
 
 	if userFirstEmail == "" || dbFirstEmail == ""   {
-        return scoring.NoMatch
+        return constants.NoMatch
     }
 	
 	if  userFirstEmail == "" && dbFirstEmail == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 	
 	if strings.EqualFold(userFirstEmail,dbFirstEmail) {
-		return weights.FirstEmail * scoring.IdealMatch
+		return weights.FirstEmail * constants.IdealMatch
 	}
-	return scoring.NoMatch
+	return constants.NoMatch
 }
 
 func CalculateScoreForFirstPhone(userFirstPhone, dbFirstPhone string, weights models.Weights) float64 {
 
 	if userFirstPhone == "" || dbFirstPhone == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	if userFirstPhone == "" && dbFirstPhone == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
     
     uPhone := CleanPhoneNumber(userFirstPhone)
     dPhone := CleanPhoneNumber(dbFirstPhone)
 
     if uPhone == dPhone {
-        return weights.Phone * scoring.IdealMatch
+        return weights.Phone * constants.IdealMatch
     }
 
-        if len(uPhone) < scoring.MinLen || len(dPhone) < scoring.MinLen {
-            return scoring.NoMatch
+        if len(uPhone) < constants.MinLen || len(dPhone) < constants.MinLen {
+            return constants.NoMatch
         }
 
         checkLen := min(min(len(dPhone), len(uPhone)), 10)
 
         if uPhone[len(uPhone)-checkLen:] == dPhone[len(dPhone)-checkLen:] {
-            return weights.Phone * scoring.PartialMatch
+            return weights.Phone * constants.PartialMatch
         }
 
-    return scoring.NoMatch
+    return constants.NoMatch
 }
 
 func CleanPhoneNumber(phone string) string {

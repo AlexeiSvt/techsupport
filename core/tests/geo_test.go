@@ -5,7 +5,7 @@ import (
 
 	"testing"
 
-	"techsupport/core/internal/scoring/logic"
+	"techsupport/core/internal/logic"
 
 	"github.com/stretchr/testify/assert"
 )

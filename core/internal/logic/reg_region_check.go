@@ -3,7 +3,7 @@ package logic
 import (
 	"strings"
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 )
 
 func CalculateScoreForRegCountry(userRegCountry, dbRegCountry string, weights models.Weights) float64 {
@@ -12,17 +12,17 @@ func CalculateScoreForRegCountry(userRegCountry, dbRegCountry string, weights mo
 	DCountry := strings.TrimSpace(dbRegCountry)
 
 	if Ucountry == "" || DCountry == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	if Ucountry == "" && DCountry == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	if strings.EqualFold(Ucountry, DCountry) {
-		return weights.RegCountry * scoring.IdealMatch
+		return weights.RegCountry * constants.IdealMatch
 	}
-	return scoring.NoMatch
+	return constants.NoMatch
 }
 
 func CalculateScoreForRegCity(userRegCity, dbRegCity string, weights models.Weights) float64 {
@@ -31,16 +31,16 @@ func CalculateScoreForRegCity(userRegCity, dbRegCity string, weights models.Weig
 	dCity := strings.TrimSpace(dbRegCity)
 
 	if uCity == "" || dCity == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	if uCity == "" && dCity == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	if strings.EqualFold(uCity, dCity) {
-		return weights.RegCity * scoring.IdealMatch
+		return weights.RegCity * constants.IdealMatch
 	}
 
-	return scoring.NoMatch
+	return constants.NoMatch
 }

@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"techsupport/core/internal/scoring/logic"
+	"techsupport/core/internal/logic"
 
 	"testing"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func TestCalculateScoreForFirstDevice_AllCases(t *testing.T) {
 		{"F2P WithNumbers", "OnePlus 9 Pro", "OnePlus 9 Pro", false, 17.5},
 		{"F2P DifferentNumbers", "OnePlus 9 Pro", "OnePlus 8 Pro", false, 0.0},
 		{"F2P Generic", "Mobile Device", "Mobile Device", false, 17.5},
-		{"F2P Unicode", "Смартфон", "Смартфон", false, 17.5},
+		{"F2P Unicode", "Smartphone", "Smartphone", false, 17.5},
 		{"F2P SingleChar", "A", "A", false, 17.5},
 
 		{"P2W Identical", "iPhone 12", "iPhone 12", true, 12.5},

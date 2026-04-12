@@ -5,8 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"techsupport/core/internal/scoring/logic"
-
+	"techsupport/core/internal/logic"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,7 +66,7 @@ func TestCalculateDeltaOfCreationAge_RegDate_BoundaryCases(t *testing.T) {
 				isDonator bool
 				expected  float64
 			}{
-				name:      fmt.Sprintf("P2W_hours=%d_months=%d", i, j),
+				name:      fmt.Sprintf("Solvent_hours=%d_months=%d", i, j),
 				userDate:  userTime,
 				dbDate:    baseDate,
 				isDonator: true,

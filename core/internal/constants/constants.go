@@ -1,25 +1,25 @@
-package scoring
+package constants
 
 const (
-	F2P_Weight_RegDate          = 12.5 // 12.5 is the weight for registration date for F2P users
-	F2P_Weight_RegCountry       = 5.0  // 5.0 is the weight for registration country for F2P users
-	F2P_Weight_RegCity          = 12.5 // 12.5 is the weight for registration city for F2P users
-	F2P_Weight_FirstEmail       = 11.5 // 11.5 is the weight for first email for F2P users
-	F2P_Weight_Phone            = 16.0 // 16.0 is the weight for phone for F2P users
-	F2P_Weight_FirstDevice      = 17.5 // 17.5 is the weight for first device for F2P users
-	F2P_Weight_Devices          = 25.0 // 25.0 is the weight for devices for F2P users
-	F2P_Weight_FirstTransaction = 0.0  // 0.0 is the weight for first transaction for F2P users, as they don't have transactions
+	Insolvent_Weight_RegDate          = 12.5 // 12.5 is the weight for registration date for Insolvent users
+	Insolvent_Weight_RegCountry       = 5.0  // 5.0 is the weight for registration country for Insolvent users
+	Insolvent_Weight_RegCity          = 12.5 // 12.5 is the weight for registration city for Insolvent users
+	Insolvent_Weight_FirstEmail       = 11.5 // 11.5 is the weight for first email for Insolvent users
+	Insolvent_Weight_Phone            = 16.0 // 16.0 is the weight for phone for Insolvent users
+	Insolvent_Weight_FirstDevice      = 17.5 // 17.5 is the weight for first device for Insolvent users
+	Insolvent_Weight_Devices          = 25.0 // 25.0 is the weight for devices for Insolvent users
+	Insolvent_Weight_FirstTransaction = 0.0  // 0.0 is the weight for first transaction for Insolvent users, as they don't have transactions
 )
 
 const (
-	P2W_Weight_RegDate          = 7.5  // 7.5 is the weight for registration date for P2W users
-	P2W_Weight_RegCountry       = 5.0  // 5.0 is the weight for registration country for P2W users
-	P2W_Weight_RegCity          = 12.5 // 12.5 is the weight for registration city for P2W users
-	P2W_Weight_FirstEmail       = 11.5 // 11.5 is the weight for first email for P2W users
-	P2W_Weight_Phone            = 16.0 // 16.0 is the weight for phone for P2W users
-	P2W_Weight_FirstDevice      = 12.5 // 12.5 is the weight for first device for P2W users
-	P2W_Weight_Devices          = 15.0 // 15.0 is the weight for devices for P2W users
-	P2W_Weight_FirstTransaction = 20.0 // 20.0 is the weight for first transaction for P2W users, as they have transactions
+	Solvent_Weight_RegDate          = 7.5  // 7.5 is the weight for registration date for Solvent users
+	Solvent_Weight_RegCountry       = 5.0  // 5.0 is the weight for registration country for Solvent users
+	Solvent_Weight_RegCity          = 12.5 // 12.5 is the weight for registration city for Solvent users
+	Solvent_Weight_FirstEmail       = 11.5 // 11.5 is the weight for first email for Solvent users
+	Solvent_Weight_Phone            = 16.0 // 16.0 is the weight for phone for Solvent users
+	Solvent_Weight_FirstDevice      = 12.5 // 12.5 is the weight for first device for Solvent users
+	Solvent_Weight_Devices          = 15.0 // 15.0 is the weight for devices for Solvent users
+	Solvent_Weight_FirstTransaction = 20.0 // 20.0 is the weight for first transaction for Solvent users, as they have transactions
 )
 
 const (

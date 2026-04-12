@@ -2,8 +2,8 @@ package pkg
 
 import (
     "techsupport/core/internal/models"
-    "techsupport/core/internal/scoring/logic"
-    "techsupport/core/internal/scoring/logic/transactions"
+    "techsupport/core/internal/logic"
+    "techsupport/core/internal/logic/transactions"
 )
 
 type ScoreCalculator interface {

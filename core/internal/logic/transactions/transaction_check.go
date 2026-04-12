@@ -2,12 +2,12 @@ package transactions
 
 import (
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 )
 
 func CalculateFirstTransactionScore(dbRecord models.DBRecord, userClaim models.UserClaim, weights models.Weights) float64 {
     if weights.FirstTransaction <= 0 {
-        return scoring.NoMatch
+        return constants.NoMatch
     }
 
     tx := userClaim.FirstTransaction
@@ -26,29 +26,29 @@ func CalculateFirstTransactionScore(dbRecord models.DBRecord, userClaim models.U
 
     if baseScore == 0 {
         if isRegionAndDeviceKnown(tx, dbRecord.UserHistory) {
-            baseScore = scoring.PartialMatch
+            baseScore = constants.PartialMatch
         } else {
-            return scoring.NoMatch 
+            return constants.NoMatch 
         }
     }
 
     if isHighFrequencyTransaction(dbRecord.UserHistory.AllPayments, tx) {
         anomalyCount++
-        baseScore *= scoring.MostlyMatch
+        baseScore *= constants.MostlyMatch
     }
 
     if isSuddenHighDonation(tx, dbRecord.UserHistory) {
         anomalyCount++
-        baseScore *= scoring.MostlyMatch
+        baseScore *= constants.MostlyMatch
     }
 
     if !isRegionAndDeviceKnown(tx, dbRecord.UserHistory) {
         anomalyCount++
-        baseScore *= scoring.MostlyMatch
+        baseScore *= constants.MostlyMatch
     }
 
     if anomalyCount >= 2 {
-        return scoring.NoMatch 
+        return constants.NoMatch 
     }
 
     return capTransactionScore(baseScore * weights.FirstTransaction, weights.FirstTransaction)

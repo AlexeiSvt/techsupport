@@ -3,25 +3,25 @@ package logic
 import (
 	"strings"
 	"techsupport/core/internal/models"
-	"techsupport/core/internal/scoring"
+	"techsupport/core/internal/constants"
 	"time"
 )
 
 func CalculateScoreForFirstDevice(userFirstDevice, dbFirstDevice string, weights models.Weights) float64 {
 
 	if userFirstDevice == "" || dbFirstDevice == "" {
-		return scoring.NoMatch
+		return constants.NoMatch
 	}
 
 	if strings.EqualFold(userFirstDevice, dbFirstDevice) {
-		return weights.FirstDevice * scoring.IdealMatch
+		return weights.FirstDevice * constants.IdealMatch
 	}
-	return scoring.NoMatch
+	return constants.NoMatch
 }
 
 func CalculateScoreForDevices(userDevices []string, dbRecord models.DBRecord, weights models.Weights) float64 {
  if len(userDevices) == 0 || len(dbRecord.Devices) == 0 {
-  return scoring.NoMatch
+  return constants.NoMatch
  }
 
  deviceMap := make(map[string]struct{}, len(dbRecord.Devices))
@@ -38,14 +38,14 @@ func CalculateScoreForDevices(userDevices []string, dbRecord models.DBRecord, we
  }
 
  if matches == 0.0 {
-  return scoring.NoMatch
+  return constants.NoMatch
  }
 
  matchRatio := float64(matches) / float64(len(dbRecord.Devices))
  penalty := GetDevicePenalty(dbRecord.RegDate, len(dbRecord.Devices))
 
- if matchRatio > scoring.IdealMatch {
-  matchRatio = scoring.IdealMatch
+ if matchRatio > constants.IdealMatch {
+  matchRatio = constants.IdealMatch
  }
 
  return weights.Devices * matchRatio* penalty
@@ -53,7 +53,7 @@ func CalculateScoreForDevices(userDevices []string, dbRecord models.DBRecord, we
 
 
 func GetDevicePenalty(regDate time.Time, devicesCount int) float64 {
-    yearsActive := time.Since(regDate).Hours() / scoring.OneYearInHours
+    yearsActive := time.Since(regDate).Hours() / constants.OneYearInHours
     if yearsActive < 1 {
         yearsActive = 1
     }
@@ -61,8 +61,8 @@ func GetDevicePenalty(regDate time.Time, devicesCount int) float64 {
     allowedDevices := max(int(yearsActive * 4), 10)
 
     if devicesCount > allowedDevices {
-        return scoring.MostlyMatch
+        return constants.MostlyMatch
     }
 
-    return scoring.IdealMatch
+    return constants.IdealMatch
 }
