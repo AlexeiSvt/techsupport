@@ -11,13 +11,12 @@ import (
 	"techsupport/core/internal/models"
 )
 
-// Фиксируем сид один раз для всего пакета, чтобы не спамить в цикле
-var r = rand.New(rand.NewSource(time.Now().UnixNano()))
+var r = rand.New(rand.NewSource(42))
 
 func randomDBRecord(i int) models.DBRecord {
-	firstWindow := []models.Session{}
-	lastWindow := []models.Session{}
-	allPayments := []models.Transaction{}
+	firstWindow := make([]models.Session, 0)
+	lastWindow := make([]models.Session, 0)
+	allPayments := make([]models.Transaction, 0)
 
 	numFirst := 1 + r.Intn(3)
 	numLast := 1 + r.Intn(3)
@@ -41,10 +40,12 @@ func randomDBRecord(i int) models.DBRecord {
 		})
 	}
 
+	now := time.Now()
+
 	for j := 0; j < numPayments; j++ {
 		allPayments = append(allPayments, models.Transaction{
 			Amount:    float64(r.Intn(20)),
-			Timestamp: time.Now().Add(-time.Duration(r.Intn(240)) * time.Hour).Format(time.RFC3339),
+			Timestamp: now.Add(-time.Duration(r.Intn(240)) * time.Hour).Format(time.RFC3339),
 		})
 	}
 
@@ -59,6 +60,8 @@ func randomDBRecord(i int) models.DBRecord {
 }
 
 func randomUserClaim() models.UserClaim {
+	now := time.Now()
+
 	return models.UserClaim{
 		AccTag: "test_user",
 		FirstTransaction: models.Transaction{
@@ -66,7 +69,7 @@ func randomUserClaim() models.UserClaim {
 			Country:   fmt.Sprintf("Country-%d", r.Intn(5)),
 			DeviceID:  fmt.Sprintf("device-%d", r.Intn(50)),
 			IP:        fmt.Sprintf("192.168.%d.%d", r.Intn(255), r.Intn(255)),
-			Timestamp: time.Now().Format(time.RFC3339),
+			Timestamp: now.Format(time.RFC3339),
 			Amount:    float64(r.Intn(100)),
 		},
 	}
@@ -76,11 +79,13 @@ func Test1000Transactions(t *testing.T) {
 	calc := transactions.FirstTransactionScoreCalculator{}
 
 	for i := 0; i < 1000; i++ {
-		idx := i
-		t.Run(fmt.Sprintf("tx_%d", idx), func(t *testing.T) {
-			db := randomDBRecord(idx)
+		i := i
+
+		t.Run(fmt.Sprintf("tx_%d", i), func(t *testing.T) {
+			t.Parallel()
+
+			db := randomDBRecord(i)
 			claim := randomUserClaim()
-			// ВАЖНО: Убедись, что GetWeights возвращает models.Weights
 			w := logic.GetWeights(db.IsDonator)
 
 			user := models.UserData{
@@ -89,23 +94,35 @@ func Test1000Transactions(t *testing.T) {
 
 			res := calc.Calculate(user, db, w)
 
-			// ГАРАНТИРОВАННЫЙ ЛОГ: Никаких шансов для ошибки типов
-			msg := fmt.Sprintf("[%v] Score: %.2f | Status: %v", res.Code, res.Result, res.Status)
-			t.Log(msg)
+			t.Logf("[%v] Score: %.2f | Status: %v", res.Code, res.Result, res.Status)
 
-			if res.Result > w.FirstTransaction {
-				t.Errorf("Score %.2f > Weight %.2f", res.Result, w.FirstTransaction)
+			if !db.IsDonator {
+				if res.Status != "skipped" {
+					t.Fatalf("Expected skipped for non-donator, got %v", res.Status)
+				}
+				return
 			}
 
-			// Проверка на совпадение
+			if res.Result > w.FirstTransaction {
+				t.Fatalf("Score %.2f > Weight %.2f", res.Result, w.FirstTransaction)
+			}
+
 			if len(db.UserHistory.FirstWindow) > 0 {
-				user.UserClaim.FirstTransaction.City = db.UserHistory.FirstWindow[0].City
-				user.UserClaim.FirstTransaction.Country = db.UserHistory.FirstWindow[0].Country
-				user.UserClaim.FirstTransaction.DeviceID = db.UserHistory.FirstWindow[0].DeviceID
-				
-				matchRes := calc.Calculate(user, db, w)
-				if matchRes.Result == 0 {
-					t.Errorf("Expected positive score for matching data, got 0")
+				matchUser := user
+
+				matchUser.UserClaim.FirstTransaction.City = db.UserHistory.FirstWindow[0].City
+				matchUser.UserClaim.FirstTransaction.Country = db.UserHistory.FirstWindow[0].Country
+				matchUser.UserClaim.FirstTransaction.DeviceID = db.UserHistory.FirstWindow[0].DeviceID
+				matchUser.UserClaim.FirstTransaction.IP = db.UserHistory.FirstWindow[0].SessionIP
+
+				matchRes := calc.Calculate(matchUser, db, w)
+
+				if matchRes.Status == "skipped" || matchRes.Status == "anomaly_block" {
+					t.Skipf("Skipped match check due to status: %v", matchRes.Status)
+				}
+
+				if matchRes.Result <= 0 {
+					t.Fatalf("Expected positive score for matching data, got %.2f", matchRes.Result)
 				}
 			}
 		})

@@ -1,70 +1,41 @@
 package ipchecker
 
 import (
-	"context"
-	"os"
-	"strings"
-	"techsupport/core/internal/constants"
+    "context"
+    "os"
+    "strings"
+    "techsupport/core/internal/constants"
 )
 
 func getAPIKey() string {
-	return strings.TrimSpace(os.Getenv("API_IP_INFO_KEY"))
+    return strings.TrimSpace(os.Getenv("API_IP_INFO_KEY"))
 }
 
 func (info *IpApiResponse) GetPenaltyScore() float64 {
-	if info == nil {
-		return constants.FullPenalty
-	}
+    if info == nil {
+        return float64(constants.FullPenalty)
+    }
 
-	score := 0.0
+    penalty := 100.0 - info.TrustScore
 
-	switch {
-	case info.IsBogon:
-		return constants.FullPenalty
-	case info.IsAbuser:
-		return constants.FullPenalty
-	case info.IsTor:
-		return constants.FullPenalty
-	case info.IsCrawler:
-		return constants.FullPenalty
-	}
+    if penalty > float64(constants.FullPenalty) {
+        penalty = float64(constants.FullPenalty)
+    }
 
-	if info.IsDatacenter {
-		score += constants.ForDatacenter
-	}
+    if penalty < 0 {
+        penalty = 0
+    }
 
-	if info.IsVPN {
-		score += constants.ForVPN
-	}
-
-	if info.IsProxy {
-		score += constants.ForProxy
-	}
-
-	if strings.EqualFold(info.ASN.Type, "hosting") {
-		score += constants.ForHosting
-	}
-
-	if strings.EqualFold(info.ASN.Type, "mobile") {
-		score *= constants.PartialMatch
-	}
-
-	if info.IsMobile {
-		score *= constants.PartialMatch
-	}
-
-	if info.IsSatellite {
-		score *= constants.MostlyMatch
-	}
-
-	if score > constants.FullPenalty {
-		score = constants.FullPenalty
-	}
-
-	return score
+    return penalty
 }
 
+func (info *IpApiResponse) GetOperator() string {
+    if info == nil {
+        return "Unknown"
+    }
+    return info.ASN.Org
+}
 
 func GetIpInfo(ip string) (*IpApiResponse, error) {
-	return GetIpInfoWithContext(context.Background(), ip)
+    return GetIpInfoWithContext(context.Background(), ip)
 }

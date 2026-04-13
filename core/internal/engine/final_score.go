@@ -11,9 +11,16 @@ import (
 
 func CalculateFinalScore(input models.InputData) models.OutputData {
     ipInfo, err := ipchecker.GetIpInfo(input.UserData.IP)
+    
+    ipPenaltyScore := 0.0
+    
     if err == nil {
         input.UserData.UserClaim.IPInfo = ipInfo
-        input.UserData.ASN = ipInfo.ASN.Org
+        
+  
+        input.UserData.ASN = ipInfo.GetOperator()
+        
+        ipPenaltyScore = ipInfo.GetPenaltyScore()
     }
 
     weights := logic.GetWeights(input.DBRecord.IsDonator)
@@ -23,14 +30,16 @@ func CalculateFinalScore(input models.InputData) models.OutputData {
 
     penaltyCalc := DeviceBruteforcePenaltyCalculator{}
     pRes := penaltyCalc.Calculate(input.UserData, input.DBRecord, weights)
- 
     details = append(details, pRes)
 
-    effectivePenalty := math.Max(0, math.Min(100, pRes.Result))
+    totalPenalty := pRes.Result + ipPenaltyScore
+
+    effectivePenalty := math.Max(0, math.Min(100, totalPenalty))
+    
     survivalRate := (100.0 - effectivePenalty) / 100.0
 
     finalScore := 0.0
-    if baseScore > 0 && effectivePenalty < 100 {
+    if baseScore > 0 {
         finalScore = baseScore * survivalRate
     }
 

@@ -26,8 +26,6 @@ func (c RegCountryCalculator) Calculate(user models.UserData, db models.DBRecord
 	}
 }
 
-// --- CITY CALCULATOR ---
-
 type RegCityCalculator struct{}
 
 func (c RegCityCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {

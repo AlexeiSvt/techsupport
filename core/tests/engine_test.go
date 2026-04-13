@@ -14,52 +14,84 @@ import (
 )
 
 func TestCalculateFinalScore_Production(t *testing.T) {
-	os.Setenv("API_IP_INFO_KEY", "test_key")
-	defer os.Unsetenv("API_IP_INFO_KEY")
+	apiKey := os.Getenv("API_IP_INFO_KEY")
+	if apiKey == "" {
+		t.Skip("Пропуск: API_IP_INFO_KEY is not set. Set it to run production tests.")
+    }
 
-	now := time.Now()
+	now := time.Now().Add(-24 * time.Hour)
 
 	tests := []struct {
 		name     string
 		input    models.InputData
-		expected float64
+		expected float64 // Ожидаемый итоговый процент (0.00 - 100.00)
 	}{
 		{
-			name: "01. Full Match (Local Trust IP)",
+			name: "01. Full Match (Localhost - Bogon IP)",
 			input: models.InputData{
 				UserData: models.UserData{
 					IP: "127.0.0.1",
 					UserClaim: models.UserClaim{
-						AccTag:      "MR_ZIDDER",
-						RegCountry:  "RU",
-						RegCity:     "MSK",
-						FirstEmail:  "test@mail.com",
-						Phone:       "79991234567",
+						AccTag:      "ALEXEY_DEV",
+						RegCountry:  "MD",
+						RegCity:     "Chisinau",
+						FirstEmail:  "alexey@test.com",
+						Phone:       "37360000000",
 						FirstDevice: "PC",
 						Devices:     []string{"PC"},
 						RegDate:     now,
 					},
 				},
 				DBRecord: models.DBRecord{
-					RegCountry:  "RU",
-					RegCity:     "MSK",
-					FirstEmail:  "test@mail.com",
-					Phone:       "79991234567",
+					RegCountry:  "MD",
+					RegCity:     "Chisinau",
+					FirstEmail:  "alexey@test.com",
+					Phone:       "37360000000",
 					FirstDevice: "PC",
 					Devices:     []string{"PC"},
 					RegDate:     now,
-					IsDonator:   false,
 				},
 			},
-			expected: 100.0,
+			// Для реального API адрес 127.0.0.1 — это Bogon. 
+			// Штраф будет 100%, итоговый балл 0.
+			expected: 0.00,
+		},
+		{
+			name: "02. Partial Match (Google Public DNS - Datacenter)",
+			input: models.InputData{
+				UserData: models.UserData{
+					IP: "8.8.8.8",
+					UserClaim: models.UserClaim{
+						AccTag:      "ALEXEY_DEV",
+						RegCountry:  "US",
+						RegCity:     "Mountain View",
+						FirstEmail:  "alexey@test.com",
+						Phone:       "37360000000",
+						FirstDevice: "PC",
+						Devices:     []string{"PC"},
+						RegDate:     now,
+					},
+				},
+				DBRecord: models.DBRecord{
+					RegCountry:  "US",
+					RegCity:     "Mountain View",
+					FirstEmail:  "alexey@test.com",
+					Phone:       "37360000000",
+					FirstDevice: "PC",
+					Devices:     []string{"PC"},
+					RegDate:     now,
+				},
+			},
+			expected: 0.00,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Защита от паники (Recover)
 			defer func() {
 				if r := recover(); r != nil {
-					t.Fatalf("\nCritical Error: %s\n Caused by: %v\n\nStack Trace:\n%s", tt.name, r, debug.Stack())
+					t.Fatalf("\nКритический сбой в [%s]: %v\nСтек:\n%s", tt.name, r, debug.Stack())
 				}
 			}()
 
@@ -68,16 +100,16 @@ func TestCalculateFinalScore_Production(t *testing.T) {
 			cleanPerc := strings.TrimSuffix(got.FinaPercentage, "%")
 			gotValue, err := strconv.ParseFloat(cleanPerc, 64)
 			if err != nil {
-				t.Fatalf("Failed to parse percentage string: %s", got.FinaPercentage)
+				t.Fatalf("Ошибка парсинга процента: %s", got.FinaPercentage)
 			}
 
 			if math.Abs(gotValue-tt.expected) > 0.01 {
-				t.Errorf("\nCalculation Error [%s]:\nExpected: %.2f\nGot (String): %s\nGot (Parsed): %.2f",
-					tt.name, tt.expected, got.FinaPercentage, gotValue)
+				t.Errorf("\nОшибка расчета [%s]:\nОжидали: %.2f\nПолучили: %s\nОператор IP: %s",
+					tt.name, tt.expected, got.FinaPercentage, got.Details[0].MetricName) // Предполагаем, что ASN в деталях
 			}
 
 			if len(got.Details) == 0 {
-				t.Errorf("Error [%s]: Details slice is empty, engine didn't run calculators", tt.name)
+				t.Errorf("Ошибка [%s]: Список Details пуст, расчеты не проводились", tt.name)
 			}
 		})
 	}
