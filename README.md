@@ -43,27 +43,5 @@ AI Inference: Ollama + Gemma3 (Running locally for 100% Data Privacy)
 Architecture: Modular Monolith transitioning to Microservices
 
 OS: Linux (Native Performance)
-
-🏗 System Architecture
-
-graph TD
-
-    A[User Ticket] --> B[Core Engine]
-    
-    B --> C{gRPC Gate}
-    
-    C --> D[AI Analyzer Service]
-    
-    D --> E[Local Mistral LLM]
-    
-    E --> D
-    
-    D --> B
-    
-    B --> F[PostgreSQL / TimeScaleDB]
-    
-    B --> G[Agent Dashboard]
-    
-   🔒 Privacy First
    
 Unlike cloud-based AI solutions, SentinelCore processes all PII (Personally Identifiable Information) locally. Data never leaves the internal infrastructure, ensuring compliance with strict data protection regulations and preventing leaks of sensitive user logs.

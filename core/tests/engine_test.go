@@ -24,7 +24,7 @@ func TestCalculateFinalScore_Production(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    models.InputData
-		expected float64 
+		expected float64
 	}{
 		{
 			name: "01. Full Match (Localhost - Bogon IP)",
@@ -101,14 +101,13 @@ func TestCalculateFinalScore_Production(t *testing.T) {
 			}
 
 			if math.Abs(gotValue-tt.expected) > 0.01 {
-				t.Errorf("\nОшибка расчета [%s]:\nОжидали: %.2f\nПолучили: %s\nОператор IP: %s",
-					tt.name, tt.expected, got.FinaPercentage, got.Details[0].MetricName)
+				t.Errorf("\nCalculation Error [%s]:\nExpected: %.2f\nGot: %s\nFull Calculation Details: %+v",
+					tt.name, tt.expected, got.FinaPercentage, got.Details)
 			}
 
 			if len(got.Details) == 0 {
 				t.Errorf("Error [%s]: Details slice is empty", tt.name)
 			}
-
 		})
 	}
 }
