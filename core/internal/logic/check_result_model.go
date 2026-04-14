@@ -5,3 +5,5 @@ type rawCheckResult struct {
 	Status  string
 	Comment string
 }
+
+type RawTxResult = rawCheckResult

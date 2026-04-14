@@ -11,7 +11,7 @@ import (
 
 func TestFirstEmailCalculator_AllCases(t *testing.T) {
 	refEmail := "user@example.com"
-	calc := logic.FirstEmailCalculator{}
+	calc := logic.FirstEmailCalculator{Log: nil}
 
 	type testCase struct {
 		name      string
@@ -76,12 +76,14 @@ func TestFirstEmailCalculator_AllCases(t *testing.T) {
 
 			result := calc.Calculate(user, db, weights)
 
-			assert.InDelta(t, c.expected, result.Result, 0.001, "Test failed: %s", c.name)
+			assert.InDelta(t, c.expected, result.Result, 0.001, "Value mismatch in: %s", c.name)
 
 			if c.expected > 0 {
-				assert.Equal(t, "match", result.Status)
+				assert.Equal(t, "match", result.Status, "Should be match: %s", c.name)
 			} else if c.userEmail == "" || c.dbEmail == "" {
-				assert.Equal(t, "no_data", result.Status)
+				assert.Equal(t, "no_data", result.Status, "Should be no_data: %s", c.name)
+			} else {
+				assert.Equal(t, "no_match", result.Status, "Should be no_match: %s", c.name)
 			}
 		})
 	}

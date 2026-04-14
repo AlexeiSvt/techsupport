@@ -12,35 +12,38 @@ import (
 
 func TestCalculateScoreForCreationAge_RegDate_BoundaryCases(t *testing.T) {
     baseDate := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-    
-    calc := logic.RegDateCalculator{}
+
+    calc := logic.RegDateCalculator{Log: nil} 
 
     type testCase struct {
-        name      string
-        userDate  time.Time
-        dbDate    time.Time
-        isDonator bool
-        expected  float64
+        name           string
+        userDate       time.Time
+        dbDate         time.Time
+        isDonator      bool
+        expectedResult float64
+        expectedStatus string
     }
 
     var cases []testCase
 
     isDonatorOptions := []bool{false, true}
     for _, isDonator := range isDonatorOptions {
-        weight := 12.5
-        if isDonator {
-            weight = 7.5
-        }
+        weights := logic.GetWeights(isDonator)
+        weight := weights.RegDate
 
         for i := -5; i <= 5; i++ {
             for j := 0; j <= 3; j++ {
-                expected := 0.0
+                expectedRes := 0.0
+                expectedStatus := "no_match"
                 diffMonths := float64(j)
                 
+                // Твоя логика границ
                 if diffMonths <= 2 {
-                    expected = weight 
+                    expectedRes = weight 
+                    expectedStatus = "match"
                 } else if diffMonths <= 4 {
-                    expected = weight * 0.5 
+                    expectedRes = weight * 0.5 
+                    expectedStatus = "partial"
                 }
 
                 userTime := baseDate.Add(time.Duration(i) * time.Hour).AddDate(0, j, 0)
@@ -49,11 +52,12 @@ func TestCalculateScoreForCreationAge_RegDate_BoundaryCases(t *testing.T) {
                 if isDonator { prefix = "Solvent" }
 
                 cases = append(cases, testCase{
-                    name:      fmt.Sprintf("%s_hours=%d_months=%d", prefix, i, j),
-                    userDate:  userTime,
-                    dbDate:    baseDate,
-                    isDonator: isDonator,
-                    expected:  expected,
+                    name:           fmt.Sprintf("%s_hours=%d_months=%d", prefix, i, j),
+                    userDate:       userTime,
+                    dbDate:         baseDate,
+                    isDonator:      isDonator,
+                    expectedResult: expectedRes,
+                    expectedStatus: expectedStatus,
                 })
             }
         }
@@ -72,10 +76,9 @@ func TestCalculateScoreForCreationAge_RegDate_BoundaryCases(t *testing.T) {
 
             result := calc.Calculate(user, db, weights)
 
-            assert.InDelta(t, c.expected, result.Result, 0.001, "Test failed: %s", c.name)
-                        if c.expected > 0 && c.expected == weights.RegDate {
-                assert.Equal(t, "match", result.Status)
-            }
+            assert.InDelta(t, c.expectedResult, result.Result, 0.001, "Test failed: %s", c.name)
+            
+            assert.Equal(t, c.expectedStatus, result.Status, "Status mismatch: %s", c.name)
         })
     }
 }

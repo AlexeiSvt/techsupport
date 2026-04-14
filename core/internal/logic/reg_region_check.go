@@ -3,17 +3,25 @@ package logic
 import (
 	"strings"
 	"techsupport/core/internal/constants"
+	"techsupport/core/internal/errors"
 	"techsupport/core/internal/models"
 	"techsupport/core/pkg"
+	logPkg "techsupport/log/pkg"
 )
 
 var _ pkg.ScoreCalculator = (*RegCountryCalculator)(nil)
 var _ pkg.ScoreCalculator = (*RegCityCalculator)(nil)
 
-type RegCountryCalculator struct{}
+type RegCountryCalculator struct {
+	Log logPkg.Logger
+}
 
-func (c RegCountryCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
-	res := checkLocation(user.UserClaim.RegCountry, db.RegCountry, "Country")
+func (c *RegCountryCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	if c.Log != nil {
+		c.Log.Debugw("calculating country match", "u_country", user.UserClaim.RegCountry, "db_country", db.RegCountry)
+	}
+
+	res := c.checkLocation(user.UserClaim.RegCountry, db.RegCountry, "Country")
 
 	return models.CalcResult{
 		Name:    "Registration Country Match",
@@ -26,10 +34,16 @@ func (c RegCountryCalculator) Calculate(user models.UserData, db models.DBRecord
 	}
 }
 
-type RegCityCalculator struct{}
+type RegCityCalculator struct {
+	Log logPkg.Logger
+}
 
-func (c RegCityCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
-	res := checkLocation(user.UserClaim.RegCity, db.RegCity, "City")
+func (c *RegCityCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	if c.Log != nil {
+		c.Log.Debugw("calculating city match", "u_city", user.UserClaim.RegCity, "db_city", db.RegCity)
+	}
+
+	res := c.checkLocation(user.UserClaim.RegCity, db.RegCity, "City")
 
 	return models.CalcResult{
 		Name:    "Registration City Match",
@@ -42,30 +56,44 @@ func (c RegCityCalculator) Calculate(user models.UserData, db models.DBRecord, w
 	}
 }
 
-// Универсальная функция для проверки текстовых локаций
-func checkLocation(userVal, dbVal, label string) rawCheckResult {
+func (c *RegCountryCalculator) checkLocation(userVal, dbVal, label string) rawCheckResult {
+	return checkLocationGeneric(c.Log, userVal, dbVal, label)
+}
+
+func (c *RegCityCalculator) checkLocation(userVal, dbVal, label string) rawCheckResult {
+	return checkLocationGeneric(c.Log, userVal, dbVal, label)
+}
+
+func checkLocationGeneric(log logPkg.Logger, userVal, dbVal, label string) rawCheckResult {
 	u := strings.TrimSpace(userVal)
 	d := strings.TrimSpace(dbVal)
 
 	if u == "" || d == "" {
+		if log != nil {
+			log.Warnw(errors.ErrEmptyLocationData.Error(), "label", label, "is_user_empty", u == "", "is_db_empty", d == "")
+		}
 		return rawCheckResult{
 			Value:   constants.NoMatch,
-			Status:  "no_data",
-			Comment: label + " data is missing in claim or database",
+			Status:  errors.StatusNoData,
+			Comment: label + " data is missing",
 		}
 	}
 
 	if strings.EqualFold(u, d) {
 		return rawCheckResult{
 			Value:   constants.IdealMatch,
-			Status:  "match",
-			Comment: label + " matches exactly (case-insensitive)",
+			Status:  errors.StatusMatch,
+			Comment: label + " matches exactly",
 		}
+	}
+
+	if log != nil {
+		log.Debugw(errors.ErrLocationMismatch.Error(), "label", label, "u_val", u, "d_val", d)
 	}
 
 	return rawCheckResult{
 		Value:   constants.NoMatch,
-		Status:  "no_match",
-		Comment: label + " mismatch: " + u + " vs " + d,
+		Status:  errors.StatusNoMatch,
+		Comment: label + " mismatch",
 	}
 }

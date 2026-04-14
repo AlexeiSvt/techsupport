@@ -4,19 +4,31 @@ import (
 	"fmt"
 	"math"
 	"techsupport/core/internal/constants"
+	"techsupport/core/internal/errors"
 	"techsupport/core/internal/models"
 	"techsupport/core/pkg"
+	logPkg "techsupport/log/pkg"
 	"time"
 )
 
 var _ pkg.ScoreCalculator = (*RegDateCalculator)(nil)
 
-type RegDateCalculator struct{}
+type RegDateCalculator struct {
+	Log logPkg.Logger
+}
 
-func (c RegDateCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
-	res := checkCreationAge(user.UserClaim.RegDate, db.RegDate)
+func (c *RegDateCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	// Исправлено: добавлена проверка на nil
+	if c.Log != nil {
+		c.Log.Debugw("calculating registration date match",
+			"user_reg_date", user.UserClaim.RegDate,
+			"db_reg_date", db.RegDate,
+		)
+	}
 
-	return models.CalcResult{
+	res := c.checkCreationAge(user.UserClaim.RegDate, db.RegDate)
+
+	calcRes := models.CalcResult{
 		Name:    "Registration Date Match",
 		Code:    "reg_date",
 		Value:   res.Value,
@@ -25,13 +37,30 @@ func (c RegDateCalculator) Calculate(user models.UserData, db models.DBRecord, w
 		Status:  res.Status,
 		Comment: res.Comment,
 	}
+
+	// Исправлено: добавлена проверка на nil
+	if c.Log != nil {
+		c.Log.Infow("reg date score calculated",
+			"status", calcRes.Status,
+			"diff_value", calcRes.Value,
+		)
+	}
+
+	return calcRes
 }
 
-func checkCreationAge(userClaim time.Time, dbRecord time.Time) rawCheckResult {
+func (c *RegDateCalculator) checkCreationAge(userClaim time.Time, dbRecord time.Time) rawCheckResult {
 	if userClaim.IsZero() || dbRecord.IsZero() {
+		// Исправлено: добавлена проверка на nil
+		if c.Log != nil {
+			c.Log.Warnw(errors.ErrEmptyRegDate.Error(),
+				"user_date_zero", userClaim.IsZero(),
+				"db_date_zero", dbRecord.IsZero(),
+			)
+		}
 		return rawCheckResult{
 			Value:   constants.NoMatch,
-			Status:  "no_data",
+			Status:  errors.StatusNoData,
 			Comment: "Missing registration date in claim or database",
 		}
 	}
@@ -42,10 +71,15 @@ func checkCreationAge(userClaim time.Time, dbRecord time.Time) rawCheckResult {
 
 	commentBase := fmt.Sprintf("Diff: %.1f months (tolerance: %.1f)", diffMonths, toleranceMonths)
 
+	// Исправлено: добавлена проверка на nil
+	if c.Log != nil {
+		c.Log.Debugw("date difference calculated", "diff_months", diffMonths, "tolerance", toleranceMonths)
+	}
+
 	if diffMonths <= constants.IdealMatchofMonths+toleranceMonths {
 		return rawCheckResult{
 			Value:   constants.IdealMatch,
-			Status:  "match",
+			Status:  errors.StatusMatch,
 			Comment: commentBase + " - Within ideal range",
 		}
 	}
@@ -53,22 +87,27 @@ func checkCreationAge(userClaim time.Time, dbRecord time.Time) rawCheckResult {
 	if diffMonths <= constants.PartialMatchofMonths+toleranceMonths {
 		return rawCheckResult{
 			Value:   constants.PartialMatch,
-			Status:  "partial",
+			Status:  errors.StatusPartial,
 			Comment: commentBase + " - Within partial range",
 		}
 	}
 
 	if diffMonths-toleranceMonths >= constants.OneYearofMonths {
+
+		if c.Log != nil {
+			c.Log.Warnw(errors.ErrRegDateAnomaly.Error(), "diff_months", diffMonths)
+		}
+
 		return rawCheckResult{
 			Value:   -constants.IdealMatch,
-			Status:  "anomaly",
+			Status:  errors.StatusAnomaly,
 			Comment: commentBase + " - High discrepancy (over 1 year)",
 		}
 	}
 
 	return rawCheckResult{
 		Value:   constants.NoMatch,
-		Status:  "no_match",
+		Status:  errors.StatusNoMatch,
 		Comment: commentBase + " - Outside acceptable ranges",
 	}
 }

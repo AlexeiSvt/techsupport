@@ -11,7 +11,7 @@ import (
 
 func TestFirstPhoneCalculator_AllCases(t *testing.T) {
 	refPhone := "+1234567890"
-	calc := logic.FirstPhoneCalculator{}
+	calc := logic.FirstPhoneCalculator{Log: nil}
 
 	type testCase struct {
 		name      string
@@ -28,7 +28,7 @@ func TestFirstPhoneCalculator_AllCases(t *testing.T) {
 		weight := weights.Phone 
 		prefix := map[bool]string{true: "P2W", false: "F2P"}[isDonator]
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			cases = append(cases, testCase{
 				name:      fmt.Sprintf("Match_%d_%s", i, prefix),
 				userPhone: refPhone,
@@ -68,14 +68,14 @@ func TestFirstPhoneCalculator_AllCases(t *testing.T) {
 
 			result := calc.Calculate(user, db, weights)
 
-			assert.InDelta(t, c.expected, result.Result, 0.001, "Test failed: %s", c.name)
+			assert.InDelta(t, c.expected, result.Result, 0.001, "Value mismatch in: %s", c.name)
 
 			if c.expected > 0 {
-				assert.Equal(t, "match", result.Status)
+				assert.Equal(t, "match", result.Status, "Should be match: %s", c.name)
 			} else if c.userPhone == "" || c.dbPhone == "" {
-				assert.Equal(t, "no_data", result.Status)
+				assert.Equal(t, "no_data", result.Status, "Should be no_data: %s", c.name)
 			} else {
-				assert.Equal(t, "no_match", result.Status)
+				assert.Equal(t, "no_match", result.Status, "Should be no_match: %s", c.name)
 			}
 		})
 	}

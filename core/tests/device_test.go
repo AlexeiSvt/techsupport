@@ -9,7 +9,11 @@ import (
 )
 
 func TestFirstDeviceCalculator_AllCases(t *testing.T) {
-	calc := logic.FirstDeviceCalculator{}
+
+	calc := logic.FirstDeviceCalculator{Log: nil}
+
+	wF2P := logic.GetWeights(false)
+	wP2W := logic.GetWeights(true)
 
 	cases := []struct {
 		name      string
@@ -18,17 +22,17 @@ func TestFirstDeviceCalculator_AllCases(t *testing.T) {
 		isDonator bool
 		expected  float64
 	}{
-		{"F2P Identical", "iPhone 12", "iPhone 12", false, 17.5},
+		{"F2P Identical", "iPhone 12", "iPhone 12", false, wF2P.FirstDevice},
 		{"F2P Different", "iPhone 12", "Samsung Galaxy", false, 0.0},
 		{"F2P EmptyBoth", "", "", false, 0.0},
-		{"F2P CaseInsensitive", "iphone 12", "IPHONE 12", false, 17.5},
-		{"F2P Pixel", "Google Pixel 6", "Google Pixel 6", false, 17.5},
-		{"F2P LongDeviceName", "Samsung Galaxy S21 Ultra Premium Edition", "Samsung Galaxy S21 Ultra Premium Edition", false, 17.5},
+		{"F2P CaseInsensitive", "iphone 12", "IPHONE 12", false, wF2P.FirstDevice},
+		{"F2P Pixel", "Google Pixel 6", "Google Pixel 6", false, wF2P.FirstDevice},
+		{"F2P LongDeviceName", "Samsung Galaxy S21 Ultra Premium Edition", "Samsung Galaxy S21 Ultra Premium Edition", false, wF2P.FirstDevice},
 
-		{"P2W Identical", "iPhone 12", "iPhone 12", true, 12.5},
+		{"P2W Identical", "iPhone 12", "iPhone 12", true, wP2W.FirstDevice},
 		{"P2W Different", "iPhone 12", "Samsung Galaxy", true, 0.0},
 		{"P2W EmptyBoth", "", "", true, 0.0},
-		{"P2W CaseInsensitive", "iphone 12", "IPHONE 12", true, 12.5},
+		{"P2W CaseInsensitive", "iphone 12", "IPHONE 12", true, wP2W.FirstDevice},
 	}
 
 	for _, c := range cases {
@@ -44,14 +48,14 @@ func TestFirstDeviceCalculator_AllCases(t *testing.T) {
 
 			result := calc.Calculate(user, db, weights)
 
-			assert.InDelta(t, c.expected, result.Result, 0.001, "Test failed: %s", c.name)
+			assert.InDelta(t, c.expected, result.Result, 0.001, "Value mismatch in: %s", c.name)
 
 			if c.expected > 0 {
-				assert.Equal(t, "match", result.Status)
+				assert.Equal(t, "match", result.Status, "Should be match: %s", c.name)
 			} else if c.userDev == "" || c.dbDev == "" {
-				assert.Equal(t, "no_data", result.Status)
+				assert.Equal(t, "no_data", result.Status, "Should be no_data: %s", c.name)
 			} else {
-				assert.Equal(t, "no_match", result.Status)
+				assert.Equal(t, "no_match", result.Status, "Should be no_match: %s", c.name)
 			}
 		})
 	}

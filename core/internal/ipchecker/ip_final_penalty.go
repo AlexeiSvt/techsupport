@@ -5,14 +5,18 @@ import (
     "os"
     "strings"
     "techsupport/core/internal/constants"
+    logPkg "techsupport/log/pkg"
 )
 
 func getAPIKey() string {
     return strings.TrimSpace(os.Getenv("API_IP_INFO_KEY"))
 }
 
-func (info *IpApiResponse) GetPenaltyScore() float64 {
+func (info *IpApiResponse) GetPenaltyScore(log logPkg.Logger) float64 {
     if info == nil {
+        if log != nil {
+            log.Warnw("IP info is nil, applying full penalty")
+        }
         return float64(constants.FullPenalty)
     }
 
@@ -26,6 +30,14 @@ func (info *IpApiResponse) GetPenaltyScore() float64 {
         penalty = 0
     }
 
+    if log != nil {
+        log.Debugw("calculated IP penalty score", 
+            "ip", info.IP, 
+            "trust_score", info.TrustScore, 
+            "final_penalty", penalty,
+        )
+    }
+
     return penalty
 }
 
@@ -36,6 +48,6 @@ func (info *IpApiResponse) GetOperator() string {
     return info.ASN.Org
 }
 
-func GetIpInfo(ip string) (*IpApiResponse, error) {
-    return GetIpInfoWithContext(context.Background(), ip)
+func GetIpInfo(log logPkg.Logger, ip string) (*IpApiResponse, error) {
+    return GetIpInfoWithContext(context.Background(), log, ip)
 }

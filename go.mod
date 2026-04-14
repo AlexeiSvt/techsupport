@@ -12,6 +12,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 )
 
@@ -20,5 +21,6 @@ require (
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5
+	go.uber.org/zap v1.27.1
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

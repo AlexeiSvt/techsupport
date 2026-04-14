@@ -76,7 +76,7 @@ func randomUserClaim() models.UserClaim {
 }
 
 func Test1000Transactions(t *testing.T) {
-	calc := transactions.FirstTransactionScoreCalculator{}
+	calc := transactions.FirstTransactionScoreCalculator{Log: nil}
 
 	for i := 0; i < 1000; i++ {
 		i := i
@@ -94,17 +94,15 @@ func Test1000Transactions(t *testing.T) {
 
 			res := calc.Calculate(user, db, w)
 
-			t.Logf("[%v] Score: %.2f | Status: %v", res.Code, res.Result, res.Status)
-
 			if !db.IsDonator {
 				if res.Status != "skipped" {
-					t.Fatalf("Expected skipped for non-donator, got %v", res.Status)
+					t.Fatalf("expected status skipped for non-donator, got %v", res.Status)
 				}
 				return
 			}
 
 			if res.Result > w.FirstTransaction {
-				t.Fatalf("Score %.2f > Weight %.2f", res.Result, w.FirstTransaction)
+				t.Fatalf("score %.2f exceeds weight %.2f", res.Result, w.FirstTransaction)
 			}
 
 			if len(db.UserHistory.FirstWindow) > 0 {
@@ -118,11 +116,11 @@ func Test1000Transactions(t *testing.T) {
 				matchRes := calc.Calculate(matchUser, db, w)
 
 				if matchRes.Status == "skipped" || matchRes.Status == "anomaly_block" {
-					t.Skipf("Skipped match check due to status: %v", matchRes.Status)
+					return
 				}
 
 				if matchRes.Result <= 0 {
-					t.Fatalf("Expected positive score for matching data, got %.2f", matchRes.Result)
+					t.Fatalf("expected positive score for match, got %.2f", matchRes.Result)
 				}
 			}
 		})
