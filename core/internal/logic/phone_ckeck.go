@@ -1,29 +1,75 @@
+// Package logic provides calculation engines for scoring user data.
 package logic
 
 import (
+	"context"
 	"strings"
+	"sync"
+	"sync/atomic"
+
 	"techsupport/core/internal/constants"
 	"techsupport/core/internal/errors"
-	"techsupport/core/pkg/models"
 	"techsupport/core/pkg"
+	"techsupport/core/pkg/models"
 	logPkg "techsupport/log/pkg"
 )
 
+// Ensure FirstPhoneCalculator implements the ScoreCalculator interface at compile time.
 var _ pkg.ScoreCalculator = (*FirstPhoneCalculator)(nil)
 
+// FirstPhoneCalculator handles comparison and scoring for user phone numbers.
+// It supports full matches and partial suffix matches to account for international formatting.
+// It is fully thread-safe and optimized for concurrent execution.
 type FirstPhoneCalculator struct {
-	Log logPkg.Logger
+	mu  sync.RWMutex // Protects the logger instance during runtime updates.
+	log logPkg.Logger
+
+	totalCalculations uint64 // Atomic counter for the total number of calculation attempts.
+	matchCount        uint64 // Atomic counter for the total number of successful matches.
 }
 
-func (c *FirstPhoneCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
-	if c.Log != nil {
-		c.Log.Debugw("calculating phone match score",
+// NewFirstPhoneCalculator initializes and returns a new FirstPhoneCalculator with the given logger.
+func NewFirstPhoneCalculator(logger logPkg.Logger) *FirstPhoneCalculator {
+	return &FirstPhoneCalculator{
+		log: logger,
+	}
+}
+
+// Calculate compares user and database phone records to determine a match score.
+// It respects context cancellation and updates internal metrics atomically.
+func (c *FirstPhoneCalculator) Calculate(ctx context.Context, user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	// Increment total calculations atomically.
+	atomic.AddUint64(&c.totalCalculations, 1)
+
+	// Early exit if the context is cancelled or timed out.
+	select {
+	case <-ctx.Done():
+		return models.CalcResult{
+			Status:  "context_cancelled",
+			Comment: ctx.Err().Error(),
+		}
+	default:
+	}
+
+	// Capture the logger instance safely under a Read-Lock.
+	c.mu.RLock()
+	logger := c.log
+	c.mu.RUnlock()
+
+	if logger != nil {
+		logger.Debugw("calculating phone match score",
 			"user_phone_raw", user.UserClaim.Phone,
 			"db_phone_raw", db.Phone,
 		)
 	}
 
-	res := c.checkPhone(user.UserClaim.Phone, db.Phone)
+	// Execute core comparison logic.
+	res := c.checkPhone(ctx, user.UserClaim.Phone, db.Phone)
+
+	// If the calculation result indicates a successful match, increment match counter.
+	if res.Status == errors.StatusMatch {
+		atomic.AddUint64(&c.matchCount, 1)
+	}
 
 	calcRes := models.CalcResult{
 		Name:    "First Phone Match",
@@ -35,8 +81,8 @@ func (c *FirstPhoneCalculator) Calculate(user models.UserData, db models.DBRecor
 		Comment: res.Comment,
 	}
 
-	if c.Log != nil {
-		c.Log.Infow("phone score calculation finished",
+	if logger != nil {
+		logger.Infow("phone score calculation finished",
 			"status", calcRes.Status,
 			"result", calcRes.Result,
 		)
@@ -45,10 +91,16 @@ func (c *FirstPhoneCalculator) Calculate(user models.UserData, db models.DBRecor
 	return calcRes
 }
 
-func (c *FirstPhoneCalculator) checkPhone(userPhone, dbPhone string) rawCheckResult {
+// checkPhone cleans and compares two phone number strings.
+// It performs a full match first, followed by a suffix match if full comparison fails.
+func (c *FirstPhoneCalculator) checkPhone(ctx context.Context, userPhone, dbPhone string) rawCheckResult {
+	// Read-Locking for safe access to the logger.
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	if userPhone == "" || dbPhone == "" {
-		if c.Log != nil {
-			c.Log.Warnw(errors.ErrEmptyPhoneData.Error(), "u_phone_empty", userPhone == "", "db_phone_empty", dbPhone == "")
+		if c.log != nil {
+			c.log.Warnw(errors.ErrEmptyPhoneData.Error(), "u_phone_empty", userPhone == "", "db_phone_empty", dbPhone == "")
 		}
 		return rawCheckResult{
 			Value:   constants.NoMatch,
@@ -57,9 +109,11 @@ func (c *FirstPhoneCalculator) checkPhone(userPhone, dbPhone string) rawCheckRes
 		}
 	}
 
+	// Clean numbers to contain only digits.
 	uPhone := CleanPhoneNumber(userPhone)
 	dPhone := CleanPhoneNumber(dbPhone)
 
+	// Attempt exact match.
 	if uPhone == dPhone {
 		return rawCheckResult{
 			Value:   constants.IdealMatch,
@@ -68,9 +122,10 @@ func (c *FirstPhoneCalculator) checkPhone(userPhone, dbPhone string) rawCheckRes
 		}
 	}
 
+	// Check minimum length requirement before partial matching.
 	if len(uPhone) < constants.MinLen || len(dPhone) < constants.MinLen {
-		if c.Log != nil {
-			c.Log.Debugw(errors.ErrPhoneTooShort.Error(), "u_len", len(uPhone), "d_len", len(dPhone))
+		if c.log != nil {
+			c.log.Debugw(errors.ErrPhoneTooShort.Error(), "u_len", len(uPhone), "d_len", len(dPhone))
 		}
 		return rawCheckResult{
 			Value:   constants.NoMatch,
@@ -79,7 +134,7 @@ func (c *FirstPhoneCalculator) checkPhone(userPhone, dbPhone string) rawCheckRes
 		}
 	}
 
-	// Calculate suffix match
+	// Calculate suffix match (e.g., last 10 digits) to handle country code variations.
 	checkLen := 10
 	if len(dPhone) < checkLen {
 		checkLen = len(dPhone)
@@ -89,18 +144,14 @@ func (c *FirstPhoneCalculator) checkPhone(userPhone, dbPhone string) rawCheckRes
 	}
 
 	if uPhone[len(uPhone)-checkLen:] == dPhone[len(dPhone)-checkLen:] {
-		if c.Log != nil {
-			c.Log.Debugw("partial phone match detected", "check_len", checkLen)
+		if c.log != nil {
+			c.log.Debugw("partial phone match detected", "check_len", checkLen)
 		}
 		return rawCheckResult{
 			Value:   constants.PartialMatch,
 			Status:  errors.StatusPartial,
 			Comment: "Matched by last digits",
 		}
-	}
-
-	if c.Log != nil {
-		c.Log.Debugw(errors.ErrPhoneNoMatch.Error(), "u_cleaned", uPhone, "d_cleaned", dPhone)
 	}
 
 	return rawCheckResult{
@@ -110,6 +161,7 @@ func (c *FirstPhoneCalculator) checkPhone(userPhone, dbPhone string) rawCheckRes
 	}
 }
 
+// CleanPhoneNumber removes all non-numeric characters from the input string.
 func CleanPhoneNumber(phone string) string {
 	return strings.Map(func(r rune) rune {
 		if r >= '0' && r <= '9' {
@@ -117,4 +169,16 @@ func CleanPhoneNumber(phone string) string {
 		}
 		return -1
 	}, phone)
+}
+
+// GetStats returns the total number of calculations and matches processed by this instance.
+func (c *FirstPhoneCalculator) GetStats() (uint64, uint64) {
+	return atomic.LoadUint64(&c.totalCalculations), atomic.LoadUint64(&c.matchCount)
+}
+
+// SetLogger allows for safe runtime updates of the logger instance.
+func (c *FirstPhoneCalculator) SetLogger(newLogger logPkg.Logger) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.log = newLogger
 }

@@ -1,30 +1,68 @@
+// Package transactions provides validation logic for financial activities.
 package transactions
 
 import (
+	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
+
 	"techsupport/core/internal/constants"
 	"techsupport/core/internal/errors"
-	"techsupport/core/pkg/models"
+	"techsupport/core/internal/logic"
 	"techsupport/core/pkg"
+	"techsupport/core/pkg/models"
 	logPkg "techsupport/log/pkg"
-    "techsupport/core/internal/logic"
 )
 
+// Ensure FirstTransactionScoreCalculator implements the ScoreCalculator interface.
 var _ pkg.ScoreCalculator = (*FirstTransactionScoreCalculator)(nil)
 
+// FirstTransactionScoreCalculator evaluates the validity of the user's first transaction.
+// It integrates multiple validation checks to detect anomalies and fraud patterns.
 type FirstTransactionScoreCalculator struct {
-	Log       logPkg.Logger
-	Validator *TxValidator 
+	mu        sync.RWMutex // Protects the logger and validator during runtime updates.
+	log       logPkg.Logger
+	validator *TxValidator
+
+	totalCalculations uint64 // Atomic counter for total analysis attempts.
+	blockedAnomalies  uint64 // Atomic counter for transactions blocked due to anomalies.
 }
 
-func (c *FirstTransactionScoreCalculator) Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
-	if c.Validator == nil {
-		c.Validator = &TxValidator{Log: c.Log}
+// NewFirstTransactionScoreCalculator initializes a new calculator with a validator.
+func NewFirstTransactionScoreCalculator(logger logPkg.Logger) *FirstTransactionScoreCalculator {
+	return &FirstTransactionScoreCalculator{
+		log:       logger,
+		validator: NewTxValidator(logger),
+	}
+}
+
+// Calculate orchestrates the transaction analysis process.
+// It skips the check if weights are zero and respects context cancellation.
+func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+	atomic.AddUint64(&c.totalCalculations, 1)
+
+	// Early exit if context is cancelled.
+	select {
+	case <-ctx.Done():
+		return models.CalcResult{Status: "context_cancelled", Comment: ctx.Err().Error()}
+	default:
 	}
 
+	c.mu.RLock()
+	logger := c.log
+	validator := c.validator
+	c.mu.RUnlock()
+
+	// Lazy initialization of validator if it's missing.
+	if validator == nil {
+		validator = NewTxValidator(logger)
+	}
+
+	// Skip calculation if the policy weight is zero.
 	if weights.FirstTransaction <= 0 {
-		if c.Log != nil {
-			c.Log.Debugw("skipping transaction check", "reason", "weight is zero")
+		if logger != nil {
+			logger.Debugw("skipping transaction check", "reason", "weight is zero")
 		}
 		return models.CalcResult{
 			Name:    "First Transaction Check",
@@ -34,11 +72,16 @@ func (c *FirstTransactionScoreCalculator) Calculate(user models.UserData, db mod
 		}
 	}
 
-	if c.Log != nil {
-		c.Log.Debugw("starting first transaction analysis", "tx_id", user.UserClaim.FirstTransaction.TransactionID)
+	if logger != nil {
+		logger.Debugw("starting first transaction analysis", "tx_id", user.UserClaim.FirstTransaction.TransactionID)
 	}
 
-	res := c.checkFirstTransaction(db, user.UserClaim)
+	res := c.checkFirstTransaction(ctx, db, user.UserClaim, validator)
+
+	// If blocked by anomalies, track it in metrics.
+	if res.Status == errors.StatusAnomalyBlock {
+		atomic.AddUint64(&c.blockedAnomalies, 1)
+	}
 
 	calcRes := models.CalcResult{
 		Name:    "First Transaction Analysis",
@@ -50,9 +93,9 @@ func (c *FirstTransactionScoreCalculator) Calculate(user models.UserData, db mod
 		Comment: res.Comment,
 	}
 
-	if c.Log != nil {
-		c.Log.Infow("transaction analysis finished", 
-			"status", calcRes.Status, 
+	if logger != nil {
+		logger.Infow("transaction analysis finished",
+			"status", calcRes.Status,
 			"final_value", calcRes.Value,
 		)
 	}
@@ -60,56 +103,59 @@ func (c *FirstTransactionScoreCalculator) Calculate(user models.UserData, db mod
 	return calcRes
 }
 
-func (c *FirstTransactionScoreCalculator) checkFirstTransaction(dbRecord models.DBRecord, userClaim models.UserClaim) logic.RawTxResult {
+// checkFirstTransaction executes specific validation rules and applies penalties for anomalies.
+// It returns a zero score and a block status if two or more anomalies are detected.
+func (c *FirstTransactionScoreCalculator) checkFirstTransaction(ctx context.Context, dbRecord models.DBRecord, userClaim models.UserClaim, v *TxValidator) logic.RawTxResult {
 	tx := userClaim.FirstTransaction
 	var baseScore float64
 	anomalyCount := 0
 	comment := ""
 
-	scoreFirst := c.Validator.CalculateWindowScore(tx, dbRecord.UserHistory.FirstWindow)
-	scoreLast := c.Validator.CalculateWindowScore(tx, dbRecord.UserHistory.LastWindow)
-	
+	// Evaluate match across historical windows.
+	scoreFirst := v.CalculateWindowScore(ctx, tx, dbRecord.UserHistory.FirstWindow)
+	scoreLast := v.CalculateWindowScore(ctx, tx, dbRecord.UserHistory.LastWindow)
+
 	baseScore = max(scoreFirst, scoreLast)
 
+	// Fallback check if window scoring fails.
 	if baseScore == 0 {
-		if c.Validator.IsRegionAndDeviceKnown(tx, dbRecord.UserHistory) {
+		if v.IsRegionAndDeviceKnown(ctx, tx, dbRecord.UserHistory) {
 			baseScore = constants.PartialMatch
 			comment = "Known region and device found in history"
 		} else {
-			if c.Log != nil {
-				c.Log.Warnw("transaction environment unknown", "tx_id", tx.TransactionID)
+			return logic.RawTxResult{
+				Value:   0,
+				Status:  errors.StatusNoMatch,
+				Comment: "Transaction environment is completely unknown",
 			}
-			return logic.RawTxResult{Value: 0, Status: errors.StatusNoMatch, Comment: "Transaction environment is completely unknown"}
 		}
 	} else {
 		comment = fmt.Sprintf("Matched via session history (base: %.2f)", baseScore)
 	}
 
-	if c.Validator.IsHighFrequencyTransaction(dbRecord.UserHistory.AllPayments, tx) {
+	// Anomaly 1: High Frequency (Velocity check).
+	if v.IsHighFrequencyTransaction(ctx, dbRecord.UserHistory.AllPayments, tx) {
 		anomalyCount++
 		baseScore *= constants.MostlyMatch
 		comment += " | Anomaly: High frequency"
 	}
 
-	if c.Validator.IsSuddenHighDonation(tx, dbRecord.UserHistory) {
+	// Anomaly 2: Sudden High Donation (Amount check).
+	if v.IsSuddenHighDonation(ctx, tx, dbRecord.UserHistory) {
 		anomalyCount++
 		baseScore *= constants.MostlyMatch
 		comment += " | Anomaly: Sudden high donation"
 	}
 
-	if !c.Validator.IsRegionAndDeviceKnown(tx, dbRecord.UserHistory) {
+	// Anomaly 3: Unknown Environment combination.
+	if !v.IsRegionAndDeviceKnown(ctx, tx, dbRecord.UserHistory) {
 		anomalyCount++
 		baseScore *= constants.MostlyMatch
 		comment += " | Anomaly: Unknown region/device combination"
 	}
 
+	// Anti-Fraud Policy: If 2 or more anomalies exist, block the transaction result.
 	if anomalyCount >= 2 {
-		if c.Log != nil {
-			c.Log.Errorw("transaction blocked due to multiple anomalies", 
-				"tx_id", tx.TransactionID, 
-				"anomaly_count", anomalyCount,
-			)
-		}
 		return logic.RawTxResult{
 			Value:   0,
 			Status:  errors.StatusAnomalyBlock,
@@ -126,5 +172,20 @@ func (c *FirstTransactionScoreCalculator) checkFirstTransaction(dbRecord models.
 		Value:   baseScore,
 		Status:  status,
 		Comment: comment,
+	}
+}
+
+// GetStats returns metrics for total processed transactions and total anomaly blocks.
+func (c *FirstTransactionScoreCalculator) GetStats() (uint64, uint64) {
+	return atomic.LoadUint64(&c.totalCalculations), atomic.LoadUint64(&c.blockedAnomalies)
+}
+
+// SetLogger safely updates the logger and internal validator at runtime.
+func (c *FirstTransactionScoreCalculator) SetLogger(newLogger logPkg.Logger) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.log = newLogger
+	if c.validator != nil {
+		c.validator.SetLogger(newLogger)
 	}
 }

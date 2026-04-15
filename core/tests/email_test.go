@@ -1,6 +1,8 @@
+// Package tests ensures the reliability of the scoring logic through rigorous unit testing.
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -9,9 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestFirstEmailCalculator_AllCases validates the email matching logic across 
+// multiple scenarios, ensuring that both free-to-play and donor weightings 
+// are correctly applied and that empty or mismatched data triggers appropriate statuses.
 func TestFirstEmailCalculator_AllCases(t *testing.T) {
 	refEmail := "user@example.com"
-	calc := logic.FirstEmailCalculator{Log: nil}
+	// Initialize calculator. Logging is disabled for isolated logic tests.
+	calc := logic.FirstEmailCalculator{}
 
 	type testCase struct {
 		name      string
@@ -23,12 +29,15 @@ func TestFirstEmailCalculator_AllCases(t *testing.T) {
 
 	var cases []testCase
 
+	// Generate a matrix of test cases for both user categories.
 	for _, isDonator := range []bool{false, true} {
 		weights := logic.GetWeights(isDonator)
 		weight := weights.FirstEmail
 		prefix := map[bool]string{true: "P2W", false: "F2P"}[isDonator]
 
+		// Using a loop to generate multiple variations of each scenario type.
 		for i := range 5 { 
+			// 1. Success case: Emails match perfectly.
 			cases = append(cases, testCase{
 				name:      fmt.Sprintf("Match_%d_%s", i, prefix),
 				userEmail: refEmail,
@@ -37,6 +46,7 @@ func TestFirstEmailCalculator_AllCases(t *testing.T) {
 				expected:  weight,
 			})
 
+			// 2. Data missing case: User provided an empty claim.
 			cases = append(cases, testCase{
 				name:      fmt.Sprintf("EmptyUser_%d_%s", i, prefix),
 				userEmail: "",
@@ -45,6 +55,7 @@ func TestFirstEmailCalculator_AllCases(t *testing.T) {
 				expected:  0,
 			})
 
+			// 3. Data missing case: Database record is empty.
 			cases = append(cases, testCase{
 				name:      fmt.Sprintf("EmptyDB_%d_%s", i, prefix),
 				userEmail: refEmail,
@@ -53,6 +64,7 @@ func TestFirstEmailCalculator_AllCases(t *testing.T) {
 				expected:  0,
 			})
 
+			// 4. Mismatch case: Provided email does not match the historical record.
 			cases = append(cases, testCase{
 				name:      fmt.Sprintf("Mismatch_%d_%s", i, prefix),
 				userEmail: refEmail,
@@ -74,16 +86,22 @@ func TestFirstEmailCalculator_AllCases(t *testing.T) {
 				FirstEmail: c.dbEmail,
 			}
 
-			result := calc.Calculate(user, db, weights)
+			// Added context.Background() to satisfy the interface requirements.
+			result := calc.Calculate(context.Background(), user, db, weights)
 
-			assert.InDelta(t, c.expected, result.Result, 0.001, "Value mismatch in: %s", c.name)
+			// Verify numerical precision with InDelta.
+			assert.InDelta(t, c.expected, result.Result, 0.001, "Score mismatch in: %s", c.name)
 
+			// Status logic verification based on business requirements:
+			// - Points earned: "match"
+			// - One or both fields empty: "no_data"
+			// - Explicit mismatch: "no_match"
 			if c.expected > 0 {
-				assert.Equal(t, "match", result.Status, "Should be match: %s", c.name)
+				assert.Equal(t, "match", result.Status, "Expected status 'match' for: %s", c.name)
 			} else if c.userEmail == "" || c.dbEmail == "" {
-				assert.Equal(t, "no_data", result.Status, "Should be no_data: %s", c.name)
+				assert.Equal(t, "no_data", result.Status, "Expected status 'no_data' for: %s", c.name)
 			} else {
-				assert.Equal(t, "no_match", result.Status, "Should be no_match: %s", c.name)
+				assert.Equal(t, "no_match", result.Status, "Expected status 'no_match' for: %s", c.name)
 			}
 		})
 	}

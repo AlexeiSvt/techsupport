@@ -1,6 +1,8 @@
+// Package tests implements validation suites for geographical scoring logic.
 package tests
 
 import (
+	"context"
 	"testing"
 
 	"techsupport/core/internal/logic"
@@ -9,9 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestLocationCalculators_AllCases provides comprehensive coverage for Country and City 
+// verification. It ensures the engine correctly handles regional settings, string 
+// normalization (trimming/casing), and weight distribution for both F2P and P2W profiles.
 func TestLocationCalculators_AllCases(t *testing.T) {
-	countryCalc := logic.RegCountryCalculator{Log: nil}
-	cityCalc := logic.RegCityCalculator{Log: nil}
+	// Initialize calculators without logging for isolated logic testing.
+	countryCalc := logic.RegCountryCalculator{}
+	cityCalc := logic.RegCityCalculator{}
 
 	type testCase struct {
 		name      string
@@ -21,11 +27,12 @@ func TestLocationCalculators_AllCases(t *testing.T) {
 		expected  float64
 	}
 
+	// Iterate through both user status profiles to verify weight scaling.
 	for _, isDonator := range []bool{false, true} {
 		weights := logic.GetWeights(isDonator)
 		prefix := map[bool]string{true: "P2W", false: "F2P"}[isDonator]
 
-		// Тесты для Страны
+		// --- Country Validation Tests ---
 		t.Run(prefix+"_Country", func(t *testing.T) {
 			cases := []testCase{
 				{"Match", "Moldova", "Moldova", isDonator, weights.RegCountry},
@@ -40,7 +47,8 @@ func TestLocationCalculators_AllCases(t *testing.T) {
 					user := models.UserData{UserClaim: models.UserClaim{RegCountry: c.userVal}}
 					db := models.DBRecord{RegCountry: c.dbVal}
 
-					result := countryCalc.Calculate(user, db, weights)
+					// Using context.Background() to satisfy the interface.
+					result := countryCalc.Calculate(context.Background(), user, db, weights)
 
 					assert.InDelta(t, c.expected, result.Result, 0.001, "Value mismatch in %s", c.name)
 
@@ -55,11 +63,11 @@ func TestLocationCalculators_AllCases(t *testing.T) {
 			}
 		})
 
-		// Тесты для Города
+		// --- City Validation Tests ---
 		t.Run(prefix+"_City", func(t *testing.T) {
 			cases := []testCase{
 				{"Match", "Chisinau", "Chisinau", isDonator, weights.RegCity},
-				{"WithSpaces", " Chisinau ", "Chisinau", isDonator, weights.RegCity},
+				{"WithSpaces", " Chisinau ", "Chisinau", isDonator, weights.RegCity}, // Verification of string trimming
 				{"Mismatch", "Chisinau", "Balti", isDonator, 0.0},
 				{"EmptyBoth", "", "", isDonator, 0.0},
 			}
@@ -69,7 +77,8 @@ func TestLocationCalculators_AllCases(t *testing.T) {
 					user := models.UserData{UserClaim: models.UserClaim{RegCity: c.userVal}}
 					db := models.DBRecord{RegCity: c.dbVal}
 
-					result := cityCalc.Calculate(user, db, weights)
+					// Using context.Background() to satisfy the interface.
+					result := cityCalc.Calculate(context.Background(), user, db, weights)
 
 					assert.InDelta(t, c.expected, result.Result, 0.001, "Value mismatch in %s", c.name)
 
