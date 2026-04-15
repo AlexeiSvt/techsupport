@@ -5,7 +5,7 @@ import (
 	"math"
 	"techsupport/core/internal/constants"
 	"techsupport/core/internal/errors"
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 	"techsupport/core/pkg"
 	logPkg "techsupport/log/pkg"
 	"time"

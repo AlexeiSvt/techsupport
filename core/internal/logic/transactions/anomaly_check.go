@@ -3,7 +3,7 @@ package transactions
 import (
 	"techsupport/core/internal/constants"
 	"techsupport/core/internal/errors"
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 	logPkg "techsupport/log/pkg"
 	"time"
 )

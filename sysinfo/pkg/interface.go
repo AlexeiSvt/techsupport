@@ -1,6 +1,6 @@
 package pkg
 
-import "techsupport/sysinfo/internal/models"
+import "techsupport/sysinfo/pkg/models"
 
 
 type SystemCollector interface {

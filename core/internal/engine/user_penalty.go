@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 	"techsupport/core/internal/constants"
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 	logPkg "techsupport/log/pkg"
 )
 

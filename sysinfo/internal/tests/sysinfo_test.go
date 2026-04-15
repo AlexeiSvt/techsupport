@@ -16,7 +16,6 @@ func TestRealSystemCollector(t *testing.T) {
 		t.Skipf("Skipping: %v", err)
 	}
 
-	// Валидация
 	if info.OS == "" {
 		t.Error("OS field is empty")
 	}

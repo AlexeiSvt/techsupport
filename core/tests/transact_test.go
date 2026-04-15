@@ -8,7 +8,7 @@ import (
 
 	"techsupport/core/internal/logic"
 	"techsupport/core/internal/logic/transactions"
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 )
 
 var r = rand.New(rand.NewSource(42))

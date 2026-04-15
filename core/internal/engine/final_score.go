@@ -5,7 +5,7 @@ import (
 	"math"
 	"techsupport/core/internal/ipchecker"
 	"techsupport/core/internal/logic"
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 	logPkg "techsupport/log/pkg"
 	"time"
 )

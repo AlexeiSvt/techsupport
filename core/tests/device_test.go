@@ -2,7 +2,7 @@ package tests
 
 import (
 	"techsupport/core/internal/logic"
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

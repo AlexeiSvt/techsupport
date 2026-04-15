@@ -1,6 +1,6 @@
 package pkg
 
-import "techsupport/core/internal/models"
+import "techsupport/core/pkg/models"
 
 type ScoreCalculator interface {
 	Calculate(user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult

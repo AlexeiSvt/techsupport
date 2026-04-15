@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"techsupport/log/pkg"
 	"techsupport/sysinfo/internal/errors"
-	"techsupport/sysinfo/internal/models"
+	"techsupport/sysinfo/pkg/models"
 
 	"github.com/denisbrodbeck/machineid"
 	"github.com/shirou/gopsutil/v3/cpu"

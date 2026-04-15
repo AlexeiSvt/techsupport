@@ -10,7 +10,7 @@ import (
     "time"
 
     "techsupport/core/internal/engine"
-    "techsupport/core/internal/models"
+    "techsupport/core/pkg/models"
 )
 
 func TestCalculateFinalScore_Production(t *testing.T) {

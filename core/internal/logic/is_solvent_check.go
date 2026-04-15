@@ -1,7 +1,7 @@
 package logic
 
 import (
-	"techsupport/core/internal/models"
+	"techsupport/core/pkg/models"
 	"techsupport/core/internal/constants"
 )
 

@@ -6,7 +6,7 @@ import (
     "time"
 
     "techsupport/core/internal/logic"
-    "techsupport/core/internal/models"
+    "techsupport/core/pkg/models"
     "github.com/stretchr/testify/assert"
 )
 
