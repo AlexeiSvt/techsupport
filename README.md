@@ -1,47 +1,152 @@
-SentinelCore:
-AI-Driven Trust & Safety Intelligence System
+# User Profiling & Trust Engine
 
-SentinelCore is a high-performance, microservice-based backend engine designed to automate and enhance user identity verification and account recovery processes. 
+**User Profiling & Trust Engine** is a backend system designed to analyze user data, calculate trust scores, and support security-focused workflows such as identity verification and fraud detection.
 
-By combining Golang’s concurrency, gRPC for low-latency communication, and Local LLMs (Gemma) for private data analysis, SentinelCore transforms raw logs into actionable security intelligence.
+The system processes both user-provided and historical data, transforming it into a structured trust score while identifying anomalies and suspicious behavior patterns.
 
-Key Features
+---
 
-1. Hybrid Scoring Engine (Truth-Verification)
-Dynamic Trust Score: A proprietary algorithm calculating the "truthfulness" of user-provided data against historical records.
-Visual Risk Indicators:
+## Overview
 
-🟢 Green (90-100%): High Trust / Automated Approval.
+At its core, the engine evaluates how consistent and reliable user data is by comparing input against historical records.
 
-🟡 Yellow (50-89%): Manual Review Required.
+The scoring model:
+- Aggregates multiple trust signals (devices, location, account data)
+- Applies weighted logic
+- Penalizes suspicious activity (e.g., brute-force attempts, abnormal IP behavior)
 
-🔴 Red (0-49%): High Risk / Probable Fraud.
+---
 
-2. AI-Powered Intelligence
-Automated Case Summaries: Instant extraction of critical user data (Devices, Registration Country and City, etc.) from unstructured support tickets.
+## Core Functionality
 
-Decision Support: AI-generated recommendations for support agents on whether to approve or deny account recovery based on cross-referenced data.
+### Trust Score Calculation
 
-Auto-Response Generation: One-click localized response generation based on the final investigation results.
+The final score is based on a weighted model:
 
-3. Anomaly & Behavioral Analytics
-Geo-Jump Detection: Visualizing login patterns to identify suspicious location shifts (e.g., "Chisinau to Bucharest" jumps).
+- Matching user input with historical data increases trust
+- Suspicious signals decrease trust
+- The score is normalized and adjusted with penalties
 
-Session Intelligence: A deep-dive log viewer covering:
-Auth Logs: Login timestamps and IP history.
-Transaction History: Verification of billing records and payment methods.
-Device Fingerprinting: Full history of hardware IDs used to access the account.
-Contact Evolution: History of associated emails and phone numbers.
+### Data Processing
 
-🛠 Tech Stack
-Language: Golang (Core Engine & Microservices)
+The system collects and analyzes:
 
-Communication: gRPC + Protocol Buffers (Binary Serialization)
+- Account creation date  
+- First known device  
+- Registration country and city  
+- Full device history  
 
-AI Inference: Ollama + Gemma3 (Running locally for 100% Data Privacy)
+### Risk Detection
 
-Architecture: Modular Monolith transitioning to Microservices
+Built-in detection mechanisms:
 
-OS: Linux (Native Performance)
-   
-Unlike cloud-based AI solutions, SentinelCore processes all PII (Personally Identifiable Information) locally. Data never leaves the internal infrastructure, ensuring compliance with strict data protection regulations and preventing leaks of sensitive user logs.
+- Suspicious IP analysis  
+- Brute-force attempt penalties  
+- Inconsistent or conflicting user data  
+
+---
+
+## Project Structure
+
+The project currently consists of four main directories:
+
+### `/core`
+
+The central engine of the system.
+
+- Calculates the final trust score  
+- Aggregates and processes user input  
+- Applies penalties for suspicious behavior  
+- Implements thread-safe logic  
+
+---
+
+### `/logger`
+
+Responsible for system-wide logging.
+
+- Tracks system events  
+- Supports debugging and auditing  
+
+---
+
+### `/sysinfo`
+
+Collects system-level information.
+
+- Machine ID  
+- CPU cores  
+- RAM  
+- Operating system  
+- Device name and hardware details  
+
+---
+
+### `/storage`
+
+Handles data persistence.
+
+- Database interaction  
+- Storage of user data and logs  
+
+---
+
+## Architecture
+
+The project follows **Clean Architecture principles**:
+
+- Clear separation of concerns  
+- Decoupled business logic  
+- Scalable and maintainable structure  
+
+Key aspects:
+
+- Internal logic is encapsulated in the `internal` directory  
+- Shared packages are properly abstracted  
+- Strict layering (services, repositories, models)  
+
+---
+
+## Engineering Principles
+
+- **SOLID principles**  
+- **KISS (Keep It Simple, Stupid)**  
+- Thread-safe design in critical components  
+- Fully documented codebase  
+
+---
+
+## Design Patterns & Testing
+
+- **Singleton** — shared instances  
+- **Strategy** — flexible scoring logic  
+- **TDD (Test-Driven Development)** — core logic is covered with tests  
+
+---
+
+## Tech Stack
+
+- **Language:** Go (Golang)  
+- **Architecture:** Clean Architecture  
+- **Concurrency:** Native goroutines (thread-safe)  
+- **Database:** PostgreSQL  
+- **IP Intelligence:** IPinfo API  
+- **Documentation:** GoDoc  
+- **OS:** Linux  
+
+---
+
+## Security & Privacy
+
+- Sensitive data is processed internally  
+- Built-in risk detection mechanisms  
+- Safe behavior under concurrent load  
+- Designed to minimize data exposure  
+
+---
+
+## Future Improvements
+
+- AI-based anomaly detection  
+- Advanced behavioral analytics  
+- Implement Websockets for real-time communication
