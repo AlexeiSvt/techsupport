@@ -2,6 +2,8 @@ package collector
 
 import (
 	"runtime"
+	"sync"
+
 	"techsupport/log/pkg"
 	"techsupport/sysinfo/internal/errors"
 	"techsupport/sysinfo/pkg/models"
@@ -12,24 +14,36 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
+// RealSystemCollector is a thread-safe implementation of system information collector.
+// It gathers runtime and hardware information from the host machine.
 type RealSystemCollector struct {
 	Log pkg.Logger
+
+	mu sync.Mutex // protects logger usage in concurrent scenarios
 }
 
+// handleErr processes errors from system calls and logs them if logger is available.
+// It returns true if an error occurred.
 func (c *RealSystemCollector) handleErr(err error, sysErr error) bool {
 	if err != nil {
+		c.mu.Lock()
 		if c.Log != nil {
 			c.Log.Errorw(sysErr.Error(), "raw_error", err)
 		}
+		c.mu.Unlock()
 		return true
 	}
 	return false
 }
 
+// Collect gathers system information from OS and hardware sources.
+// It is safe for concurrent usage due to internal synchronization.
 func (c *RealSystemCollector) Collect() (models.SystemInfo, error) {
+	c.mu.Lock()
 	if c.Log != nil {
-		c.Log.Debugw("collection started")
+		c.Log.Debugw("system info collection started")
 	}
+	c.mu.Unlock()
 
 	hInfo, errH := host.Info()
 	c.handleErr(errH, errors.ErrHostInfo)
@@ -58,7 +72,7 @@ func (c *RealSystemCollector) Collect() (models.SystemInfo, error) {
 		totalRAM = mInfo.Total
 	}
 
-	return models.SystemInfo{
+	result := models.SystemInfo{
 		OS:        runtime.GOOS,
 		Platform:  platform,
 		Arch:      runtime.GOARCH,
@@ -66,5 +80,7 @@ func (c *RealSystemCollector) Collect() (models.SystemInfo, error) {
 		CPUCores:  runtime.NumCPU(),
 		TotalRAM:  totalRAM,
 		MachineID: mID,
-	}, nil
+	}
+
+	return result, nil
 }
