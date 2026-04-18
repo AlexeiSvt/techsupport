@@ -11,7 +11,7 @@ import (
 // CalculateScore executes a set of scoring calculators against user and database records.
 // It aggregates the results into a single numerical score.
 // This function is designed to be the primary entry point for the scoring logic.
-func CalculateScore(ctx context.Context, log logPkg.Logger, user models.UserData, db models.DBRecord, weights models.Weights, calculators []pkg.ScoreCalculator) float64 {
+func CalculateScore(ctx context.Context, log logPkg.Logger, user models.UserData, db models.DBRecord, weights models.Weights, calculators []pkg.ScoreCalculator) (float64) {
 	total := 0.0
 
 	if log != nil {
@@ -35,9 +35,14 @@ func CalculateScore(ctx context.Context, log logPkg.Logger, user models.UserData
 		default:
 		}
 
+		if calc == nil {
+        log.Fatalw("CRITICAL: Calculator is nil. Check your engine initialization!")
+        panic("nil calculator") 
+    }
+
 		// Perform the specific calculation rule.
 		res := calc.Calculate(ctx, user, db, weights)
-		
+
 		// Accumulate the weighted result.
 		total += res.Result
 	}

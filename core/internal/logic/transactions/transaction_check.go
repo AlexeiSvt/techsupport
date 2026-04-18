@@ -31,6 +31,10 @@ type FirstTransactionScoreCalculator struct {
 
 // NewFirstTransactionScoreCalculator initializes a new calculator with a validator.
 func NewFirstTransactionScoreCalculator(logger logPkg.Logger) *FirstTransactionScoreCalculator {
+	if logger == nil {
+		return nil
+	}
+	
 	return &FirstTransactionScoreCalculator{
 		log:       logger,
 		validator: NewTxValidator(logger),
