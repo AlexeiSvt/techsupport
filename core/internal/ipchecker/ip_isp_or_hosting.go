@@ -18,12 +18,12 @@ func (info *IpApiResponse) IsResidential(log logPkg.Logger) bool {
 	}
 
 	// Compare ASN type to "isp". Use EqualFold for case-insensitive matching.
-	isRes := strings.EqualFold(info.ASN.Type, "isp")
+	isRes := strings.EqualFold(info.ASN.Number, "isp")
 	
 	if log != nil {
 		log.Debugw("IP residential check", 
 			"ip", info.IP, 
-			"asn_type", info.ASN.Type, 
+			"asn_type", info.ASN.Number, 
 			"is_residential", isRes,
 		)
 	}
@@ -43,7 +43,7 @@ func (info *IpApiResponse) IsHosting(log logPkg.Logger) bool {
 	}
 
 	// Compare ASN type to "hosting". Use EqualFold for case-insensitive matching.
-	isHosting := strings.EqualFold(info.ASN.Type, "hosting")
+	isHosting := strings.EqualFold(info.ASN.Number, "hosting")
 
 	if isHosting && log != nil {
 		log.Infow("hosting IP detected", 

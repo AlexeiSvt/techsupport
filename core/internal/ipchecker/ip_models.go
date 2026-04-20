@@ -10,7 +10,7 @@ import (
 // It identifies the organization owning the IP range and the type of network.
 type ASNInfo struct {
 	Org  string `json:"org"`  // Example: "Google LLC", "Comcast Cable"
-	Type string `json:"type"` // Example: "isp", "hosting", "business", "edu"
+	Number string `json:"type"` // Example: "isp", "hosting", "business", "edu"
 }
 
 // IpApiResponse is the data transfer object (DTO) for the external IP verification API.

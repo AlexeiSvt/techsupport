@@ -18,13 +18,13 @@ import (
 // and produces the final weighted percentage.
 func CalculateFinalScore(ctx context.Context, log logPkg.Logger, input models.InputData) models.OutputData {
 	if log != nil {
-		log.Infow("processing final score calculation", "ip", input.UserData.IP)
+		log.Infow("processing final score calculation", "ip", input.UserData.IPInfo.IP)
 	}
 
 	// 1. IP Intelligence Phase
 	ipPenaltyScore := 0.0
 	// We use the context-aware version to ensure we don't hang on network calls.
-	ipInfo, err := ipchecker.GetIpInfoWithContext(ctx, log, input.UserData.IP)
+	ipInfo, err := ipchecker.GetIpInfoWithContext(ctx, log, input.UserData.IPInfo.IP)
 	
 	if err != nil {
 		if log != nil {
@@ -32,8 +32,8 @@ func CalculateFinalScore(ctx context.Context, log logPkg.Logger, input models.In
 		}
 	} else {
 		// Enrich user data with live IP intelligence.
-		input.UserData.UserClaim.IPInfo = ipInfo
-		input.UserData.ASN = ipInfo.GetOperator()
+		input.UserData.IPInfo = ipInfo
+		input.UserData.IPInfo.ASN = ipInfo.ASN
 		
 		// Initial penalty based purely on IP reputation.
 		ipPenaltyScore = ipInfo.GetPenaltyScore(log)

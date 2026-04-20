@@ -75,8 +75,8 @@ func (c *DeviceBruteforcePenaltyCalculator) Calculate(ctx context.Context, user 
 	}
 
 	// 2. IP Reputation Check: Integrate penalties from external IP intelligence.
-	if user.UserClaim.IPInfo != nil {
-		ipPenalty := user.UserClaim.IPInfo.GetPenaltyScore(logger)
+	if user.IPInfo != nil {
+		ipPenalty := user.IPInfo.GetPenaltyScore(logger)
 		
 		if ipPenalty > 0 {
 			penalty += ipPenalty
