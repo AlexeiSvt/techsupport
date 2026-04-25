@@ -1,5 +1,7 @@
 # User Profiling & Trust Engine
 
+-Neo4j storage is currently being implemented 
+
 **User Profiling & Trust Engine** is a backend system designed to analyze user data, calculate trust scores, and support security-focused workflows such as identity verification and fraud detection.
 
 The system processes both user-provided and historical data, transforming it into a structured trust score while identifying anomalies and suspicious behavior patterns.
@@ -150,3 +152,4 @@ Key aspects:
 - AI-based anomaly detection  
 - Advanced behavioral analytics  
 - Implement Websockets for real-time communication
+
