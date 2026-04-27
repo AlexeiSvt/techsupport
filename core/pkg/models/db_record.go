@@ -3,40 +3,31 @@ package models
 
 import "time"
 
-// DBRecord represents the historical state of a user account retrieved from the database.
-// It serves as the "Gold Standard" or baseline for comparing new claims and 
-// calculating consistency scores.
+// DBRecord represents the objective, historical state of a user account 
+// retrieved from the primary database (the "Truth"). This data serves 
+// as the verified baseline to validate claims and calculate risk scores.
 type DBRecord struct {
-	// AccTag is a unique internal identifier or label for the account.
-	AccTag           string      `json:"acc_tag"`
+    // AccTag is the unique internal identifier or handle for the account.
+    AccTag string `json:"acc_tag" cypher:"acc_tag"`
 
-	// RegCountry is the ISO country code provided during account registration.
-	RegCountry       string      `json:"reg_country"`
+    // RegCountry is the official ISO country code captured at the moment of registration.
+    RegCountry string `json:"reg_country" cypher:"reg_country"`
 
-	// RegCity is the city name recorded at the time of account creation.
-	RegCity          string      `json:"reg_city"`
+    // RegCity is the verified city name associated with the account's creation.
+    RegCity string `json:"reg_city" cypher:"reg_city"`
 
-	// FirstEmail is the primary email address linked to the account's history.
-	FirstEmail       string      `json:"first_email"`
+    // FirstEmail is the original primary email address used to register the account.
+    FirstEmail string `json:"first_email" cypher:"first_email"`
 
-	// Phone is the verified phone number associated with the user profile.
-	Phone            string      `json:"phone"`
+    // Phone is the current verified phone number linked to the user's profile.
+    Phone string `json:"phone" cypher:"phone"`
 
-	// FirstDevice is the hardware identifier (UUID/IMEI) of the original registration device.
-	FirstDevice      string      `json:"first_device"`
+    // FirstDevice is the unique hardware identifier of the device used during registration.
+    FirstDevice string `json:"first_device" cypher:"first_device"`
 
-	// Devices is a historical list of all unique device fingerprints authorized by the user.
-	Devices          []string    `json:"devices"`
+    // IsDonator indicates if the user has premium/supporter status, which may adjust scoring weights.
+    IsDonator bool `json:"is_donator" cypher:"is_donator"`
 
-	// IsDonator indicates premium status, used to determine the logic/weighting for financial rules.
-	IsDonator        bool        `json:"is_donator"`
-
-	// FirstTransaction contains metadata regarding the user's initial financial activity.
-	FirstTransaction Transaction `json:"first_transaction"`
-
-	// UserHistory encapsulates behavioral metrics and event logs for the account's lifecycle.
-	UserHistory      UserHistory `json:"user_history"`
-
-	// RegDate is the timestamp when the account was officially created.
-	RegDate          time.Time   `json:"reg_date"`
+    // RegDate is the RFC3339 formatted timestamp of when the account was officially created.
+    RegDate time.Time `json:"reg_date" cypher:"reg_date"`
 }

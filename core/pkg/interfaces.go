@@ -1,27 +1,29 @@
 // Package pkg defines the fundamental interfaces and abstractions for the scoring system.
-// These contracts allow for decoupled development, making it easy to add new 
-// calculation rules or swap engine implementations without breaking the system.
 package pkg
 
 import (
-	"context"
-	"techsupport/core/pkg/models"
+    "context"
+    "techsupport/core/pkg/models"
 )
 
 // ScoreCalculator defines the standard behavior for an individual scoring rule.
-// Any structure that implements this interface can be injected into the 
-// main scoring pipeline.
+// It now uses the updated flat models designed for the graph architecture.
 type ScoreCalculator interface {
-	// Calculate performs a specific validation logic (e.g., IP check, Age check)
-	// and returns a detailed result based on the provided user and database records.
-	Calculate(ctx context.Context, user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult
+    // Calculate performs validation logic using the user's claim, support context, 
+    // and historical database records.
+    Calculate(
+        ctx context.Context, 
+        claim models.UserClaim, 
+        support models.SupportContext, 
+        db models.DBRecord, 
+        weights models.Weights,
+    ) models.CalcResult
 }
 
 // Engine acts as the high-level orchestrator for the scoring process.
-// It is responsible for gathering data, executing calculators, and 
-// synthesizing the final output.
 type Engine interface {
-	// Run takes the raw input data and executes the full scoring lifecycle,
-	// returning a finalized OutputData structure ready for the caller.
-	Run(input models.InputData) models.OutputData
+    // Run executes the scoring lifecycle. 
+    // Note: If you renamed InputData to something else, update the parameter here.
+    // Usually, it takes the combined context of the claim and the support interaction.
+    Run(ctx context.Context, claim models.UserClaim, support models.SupportContext) models.OutputData
 }

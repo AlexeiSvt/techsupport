@@ -1,29 +1,28 @@
 // Package models contains the data structures used throughout the scoring engine.
 package models
 
-// CalcResult represents the detailed output of a single scoring rule or calculator.
-// It serves as an audit trail, providing transparency into how a specific 
-// component contributed to the overall score.
+// CalcResult represents the output of a single scoring rule or logic unit.
+// It provides transparency, allowing developers and auditors to see exactly 
+// how a specific rule influenced the final verdict.
 type CalcResult struct {
-	// Name is the human-readable identifier for the rule (e.g., "Email Consistency").
-	Name    string  `json:"name"`
+    // Name is the descriptive name of the rule (e.g., "IP Geolocation Match").
+    Name string `json:"name" cypher:"name"`
 
-	// Code is a machine-readable unique identifier for the rule (e.g., "email_match").
-	Code    string  `json:"code"`
+    // Code is the machine-readable constant identifying the rule (e.g., "geo_ip_match").
+    Code string `json:"code" cypher:"code"`
 
-	// Value is the raw numerical result or score before weighting is applied.
-	Value   float64 `json:"value"`
+    // Value is the raw score produced by the logic before weight adjustment.
+    Value float64 `json:"value" cypher:"value"`
 
-	// Weight is the importance factor assigned to this rule (e.g., 0.5 for 50%).
-	Weight  float64 `json:"weight"`
+    // Weight represents the relative importance of this rule in the total score.
+    Weight float64 `json:"weight" cypher:"weight"`
 
-	// Result is the final weighted score (Value * Weight) contributed to the total.
-	Result  float64 `json:"result"`
+    // Result is the final contribution to the total score (Value * Weight).
+    Result float64 `json:"result" cypher:"result"`
 
-	// Comment provides a natural-language explanation for the result, 
-	// essential for auditing and troubleshooting.
-	Comment string  `json:"comment"`
+    // Comment explains the reasoning behind the score (e.g., "City mismatch: Moscow vs Tula").
+    Comment string `json:"comment" cypher:"comment"`
 
-	// Status represents the categorical outcome (e.g., "match", "partial", "anomaly").
-	Status  string  `json:"status"`
+    // Status categorizes the outcome for quick filtering (e.g., "MATCH", "MISMATCH", "FRAUD").
+    Status string `json:"status" cypher:"status"`
 }

@@ -2,57 +2,56 @@
 package models
 
 import (
-	"techsupport/core/internal/ipchecker"
 	"time"
 )
 
-// UserData represents the environmental and technical metadata captured
-// during the current user session.
-type UserData struct {
-	// City is the geographic city detected for the current session.
-	City string `json:"city"`
-	// Country is the geographic country code detected for the current session.
-	Country string `json:"country"`
-	// DeviceID is the unique hardware identifier of the current device.
-	DeviceID string `json:"device_id"`
-	// DeviceName is the human-readable name of the current device (e.g., "Android 14").
-	DeviceName string `json:"device_name"`
-	// IPInfo contains detailed third-party intelligence regarding the current IP address.
-	IPInfo *ipchecker.IpApiResponse `json:"ip_info"`
-	// UserClaim contains the identity and historical assertions provided by the user.
-	UserClaim UserClaim `json:"user_claim"`
+// SupportContext represents the environmental and technical metadata captured
+// at the moment a user contacts support. It helps verify if the person
+// submitting a claim is using a known or suspicious environment.
+type SupportContext struct {
+	// TicketID is the unique identifier for the support request or chat session.
+	TicketID string `json:"ticket_id" cypher:"id"`
+
+	// UBTicketID is the internal Bot-Session identifier (the "UB" nuance).
+	UBTicketID string `json:"ub_ticket_id" cypher:"ub_ticket_id"`
+
+	// Country is the geographic origin of the support request.
+	Country string `json:"country" cypher:"country"`
+
+	// City is the specific city from which the user is contacting support.
+	City string `json:"city" cypher:"city"`
+
+	// DeviceID is the hardware identifier of the device used to contact support.
+	DeviceID string `json:"device_id" cypher:"device_id"`
+
+	// DeviceName is the human-readable model name (e.g., "Pixel 8 Pro").
+	DeviceName string `json:"device_name" cypher:"device_name"`
 }
 
-// UserClaim encapsulates the specific identity attributes and historical
-// markers that the user is currently asserting.
+// UserClaim encapsulates the identity attributes and historical markers
+// asserted by the user. These are subjective values provided by the person
+// attempting to prove ownership of an account.
 type UserClaim struct {
-	// AccTag is the internal identifier for the account being claimed.
-	AccTag string `json:"acc_tag"`
-	// RegCountry is the original country of registration claimed by the user.
-	RegCountry string `json:"reg_country"`
-	// RegCity is the original city of registration claimed by the user.
-	RegCity string `json:"reg_city"`
-	// FirstEmail is the primary email address linked to the account.
-	FirstEmail string `json:"first_email"`
-	// Phone is the current phone number associated with the account.
-	Phone string `json:"phone"`
-	// FirstDevice is the original device ID used during registration.
-	FirstDevice string `json:"first_device"`
-	// Devices is a list of known hardware fingerprints associated with this user.
-	Devices []string `json:"devices"`
-	// FirstTransaction holds data about the very first financial event of this user.
-	FirstTransaction Transaction `json:"first_transaction"`
-	// RegDate is the timestamp of the account's creation.
-	RegDate time.Time `json:"reg_date"`
-}
+	// ClaimID is a unique identifier for this specific set of assertions.
+	ClaimID string `json:"claim_id" cypher:"id"`
 
-// UserHistory provides a longitudinal view of user behavior by grouping
-// sessions into specific time-based windows.
-type UserHistory struct {
-	// FirstWindow represents the first 300 sessions, establishing the "baseline" behavior.
-	FirstWindow []Session `json:"first_300_times"`
-	// LastWindow represents the most recent 300 sessions, used to detect sudden shifts in behavior.
-	LastWindow []Session `json:"last_300_times"`
-	// AllPayments is a chronological record of every financial transaction made by the user.
-	AllPayments []Transaction `json:"all_payments"`
+	// We link this to the Bot session ID.
+	UBTicketID string `json:"ub_ticket_id" cypher:"ub_ticket_id"`
+
+	// AccTag is the identifier for the account the user is attempting to recover.
+	AccTag string `json:"acc_tag" cypher:"acc_tag"`
+
+	// RegCountry is the original registration country claimed by the user.
+	RegCountry string `json:"reg_country" cypher:"reg_country"`
+
+	// RegCity is the original registration city claimed by the user.
+	RegCity string `json:"reg_city" cypher:"reg_city"`
+
+	// Phone is the phone number the user claims is linked to the account.
+	Phone string `json:"phone" cypher:"phone"`
+
+	// FirstDeviceID is the ID of the hardware used for account creation (claimed).
+	FirstDeviceID string `json:"first_device_id" cypher:"first_device_id"`
+	// RegDate is the estimated account creation timestamp provided by the user.
+	RegDate time.Time `json:"reg_date" cypher:"reg_date"`
 }
