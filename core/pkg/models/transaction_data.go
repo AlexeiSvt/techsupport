@@ -42,3 +42,20 @@ type Transaction struct {
     // ASN (Autonomous System Number) identifies the ISP network used for the transaction.
     ASN string `json:"asn" cypher:"asn"`
 }
+
+// Payment represents a historical successful transaction.
+// In Neo4j, these are often nodes connected to the User via a :MADE_PAYMENT relationship.
+type Payment struct {
+    // PaymentID is the unique identifier for the processed payment.
+    PaymentID string `json:"payment_id" cypher:"id"`
+
+    // Amount is the historical value of the payment.
+    Amount float64 `json:"amount" cypher:"amount"`
+
+    // CreatedAt is the time when the payment was finalized.
+    // We use time.Time to avoid redundant parsing during scoring.
+    CreatedAt time.Time `json:"created_at" cypher:"created_at"`
+
+    // Status indicates the final state (e.g., "completed", "refunded").
+    Status string `json:"status" cypher:"status"`
+}

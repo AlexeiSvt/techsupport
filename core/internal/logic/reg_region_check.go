@@ -28,7 +28,7 @@ type RegCountryCalculator struct {
 }
 
 // Calculate compares the registration country from user claims and database records.
-func (c *RegCountryCalculator) Calculate(ctx context.Context, user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+func (c *RegCountryCalculator) Calculate(ctx context.Context, claim models.UserClaim, support models.SupportContext, db models.DBRecord, weights models.Weights) models.CalcResult {
 	atomic.AddUint64(&c.totalCalculations, 1)
 
 	select {
@@ -41,17 +41,26 @@ func (c *RegCountryCalculator) Calculate(ctx context.Context, user models.UserDa
 	logger := c.log
 	c.mu.RUnlock()
 
+	// Access the registration country from the flat models.
+	userVal := claim.RegCountry
+	dbVal := db.RegCountry
+
 	if logger != nil {
-		logger.Debugw("calculating country match", "u_country", user.UserClaim.RegCountry, "db_country", db.RegCountry)
+		// Log the operation using UBTicketID for proper session tracing.
+		logger.Debugw("calculating country match", 
+			"u_country", userVal, 
+			"db_country", dbVal,
+			"ub_ticket_id", claim.UBTicketID,
+		)
 	}
 
-	res := checkLocationGeneric(ctx, logger, user.UserClaim.RegCountry, db.RegCountry, "Country")
+	res := checkLocationGeneric(ctx, userVal, dbVal, "Country")
 
 	if res.Status == errors.StatusMatch {
 		atomic.AddUint64(&c.matchCount, 1)
 	}
 
-	return models.CalcResult{
+	calcRes := models.CalcResult{
 		Name:    "Registration Country Match",
 		Code:    "reg_country",
 		Value:   res.Value,
@@ -60,6 +69,15 @@ func (c *RegCountryCalculator) Calculate(ctx context.Context, user models.UserDa
 		Status:  res.Status,
 		Comment: res.Comment,
 	}
+
+	if logger != nil {
+		logger.Infow("country score calculation finished",
+			"status", calcRes.Status,
+			"ub_ticket_id", claim.UBTicketID,
+		)
+	}
+
+	return calcRes
 }
 
 // RegCityCalculator handles scoring based on the user's registration city.
@@ -72,7 +90,7 @@ type RegCityCalculator struct {
 }
 
 // Calculate compares the registration city from user claims and database records.
-func (c *RegCityCalculator) Calculate(ctx context.Context, user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+func (c *RegCityCalculator) Calculate(ctx context.Context, claim models.UserClaim, support models.SupportContext, db models.DBRecord, weights models.Weights) models.CalcResult {
 	atomic.AddUint64(&c.totalCalculations, 1)
 
 	select {
@@ -85,17 +103,26 @@ func (c *RegCityCalculator) Calculate(ctx context.Context, user models.UserData,
 	logger := c.log
 	c.mu.RUnlock()
 
+	// Access the registration city from the flat models.
+	userVal := claim.RegCity
+	dbVal := db.RegCity
+
 	if logger != nil {
-		logger.Debugw("calculating city match", "u_city", user.UserClaim.RegCity, "db_city", db.RegCity)
+		// Log city check with contextual metadata.
+		logger.Debugw("calculating city match", 
+			"u_city", userVal, 
+			"db_city", dbVal,
+			"ub_ticket_id", claim.UBTicketID,
+		)
 	}
 
-	res := checkLocationGeneric(ctx, logger, user.UserClaim.RegCity, db.RegCity, "City")
+	res := checkLocationGeneric(ctx, userVal, dbVal, "City")
 
 	if res.Status == errors.StatusMatch {
 		atomic.AddUint64(&c.matchCount, 1)
 	}
 
-	return models.CalcResult{
+	calcRes := models.CalcResult{
 		Name:    "Registration City Match",
 		Code:    "reg_city",
 		Value:   res.Value,
@@ -104,18 +131,25 @@ func (c *RegCityCalculator) Calculate(ctx context.Context, user models.UserData,
 		Status:  res.Status,
 		Comment: res.Comment,
 	}
+
+	if logger != nil {
+		logger.Infow("city score calculation finished",
+			"status", calcRes.Status,
+			"ub_ticket_id", claim.UBTicketID,
+		)
+	}
+
+	return calcRes
 }
 
 // checkLocationGeneric is a thread-safe helper function to compare string-based location data.
 // It is used by both Country and City calculators to maintain logic consistency.
-func checkLocationGeneric(ctx context.Context, log logPkg.Logger, userVal, dbVal, label string) rawCheckResult {
+func checkLocationGeneric(ctx context.Context, userVal, dbVal, label string) rawCheckResult {
 	u := strings.TrimSpace(userVal)
 	d := strings.TrimSpace(dbVal)
 
+	// Validate inputs to ensure data presence.
 	if u == "" || d == "" {
-		if log != nil {
-			log.Warnw(errors.ErrEmptyLocationData.Error(), "label", label, "is_user_empty", u == "", "is_db_empty", d == "")
-		}
 		return rawCheckResult{
 			Value:   constants.NoMatch,
 			Status:  errors.StatusNoData,
@@ -123,6 +157,7 @@ func checkLocationGeneric(ctx context.Context, log logPkg.Logger, userVal, dbVal
 		}
 	}
 
+	// Perform case-insensitive string comparison.
 	if strings.EqualFold(u, d) {
 		return rawCheckResult{
 			Value:   constants.IdealMatch,

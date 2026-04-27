@@ -5,12 +5,18 @@ package logic
 // It carries the numerical score, a status code for flow control, and a 
 // human-readable audit trail.
 type rawCheckResult struct {
-	// Value is the calculated score or multiplier (e.g., 0.0 to 1.0).
-	Value   float64
-	// Status indicates the outcome of the check (e.g., "match", "partial", "anomaly").
-	Status  string
-	// Comment provides a detailed explanation for why this specific score was assigned.
-	Comment string
+    // Value is the calculated score or multiplier (e.g., 0.0 to 1.0).
+    // Note: In our engine, this maps to the raw 'Value' in models.CalcResult
+    // before the Weight is applied.
+    Value   float64
+
+    // Status indicates the outcome of the check (e.g., "match", "partial", "anomaly").
+    // Used to categorize the result in the final OutputData.
+    Status  string
+
+    // Comment provides a detailed explanation for why this specific score was assigned.
+    // This will be passed directly to the audit log for support agents.
+    Comment string
 }
 
 // RawTxResult is an alias for rawCheckResult, specifically used in transaction validation.

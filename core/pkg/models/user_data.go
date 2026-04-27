@@ -6,8 +6,7 @@ import (
 )
 
 // SupportContext represents the environmental and technical metadata captured
-// at the moment a user contacts support. It helps verify if the person
-// submitting a claim is using a known or suspicious environment.
+// at the moment a user contacts support.
 type SupportContext struct {
 	// TicketID is the unique identifier for the support request or chat session.
 	TicketID string `json:"ticket_id" cypher:"id"`
@@ -26,11 +25,13 @@ type SupportContext struct {
 
 	// DeviceName is the human-readable model name (e.g., "Pixel 8 Pro").
 	DeviceName string `json:"device_name" cypher:"device_name"`
+
+	// History contains pre-fetched historical data from Neo4j for comparison.
+	// This field is excluded from Cypher mapping as it represents relationships.
+	History UserHistoryContext `json:"-" cypher:"-"`
 }
 
-// UserClaim encapsulates the identity attributes and historical markers
-// asserted by the user. These are subjective values provided by the person
-// attempting to prove ownership of an account.
+// UserClaim encapsulates the identity attributes and historical markers asserted by the user.
 type UserClaim struct {
 	// ClaimID is a unique identifier for this specific set of assertions.
 	ClaimID string `json:"claim_id" cypher:"id"`
@@ -48,10 +49,26 @@ type UserClaim struct {
 	RegCity string `json:"reg_city" cypher:"reg_city"`
 
 	// Phone is the phone number the user claims is linked to the account.
-	Phone string `json:"phone" cypher:"phone"`
+	FirstPhone string `json:"phone" cypher:"phone"`
 
-	// FirstDeviceID is the ID of the hardware used for account creation (claimed).
-	FirstDeviceID string `json:"first_device_id" cypher:"first_device_id"`
+	// Email is the email the user claims is linked to the account.
+	FirstEmail string `json:"email" cypher:"email"`
+
+	// FirstDeviceName is the ID of the hardware used for account creation (claimed).
+	FirstDeviceName string `json:"first_device_id" cypher:"first_device_id"`
+
 	// RegDate is the estimated account creation timestamp provided by the user.
 	RegDate time.Time `json:"reg_date" cypher:"reg_date"`
+
+	// FirstTransaction is the specific payment detail the user is using to prove ownership.
+	FirstTransaction Transaction `json:"first_transaction" cypher:"-"`
 }
+
+
+// UserHistoryContext provides flattened historical data windows for validators.
+type UserHistoryContext struct {
+	FirstWindow []Session `json:"first_window"`
+	LastWindow  []Session `json:"last_window"`
+	AllPayments []Payment `json:"all_payments"`
+}
+

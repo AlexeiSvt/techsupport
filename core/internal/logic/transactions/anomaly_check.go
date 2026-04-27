@@ -33,7 +33,7 @@ func NewTxValidator(logger logPkg.Logger) *TxValidator {
 
 // IsRegionAndDeviceKnown checks if the transaction's device and location 
 // have been previously seen in the user's history windows.
-func (v *TxValidator) IsRegionAndDeviceKnown(ctx context.Context, tx models.Transaction, history models.UserHistory) bool {
+func (v *TxValidator) IsRegionAndDeviceKnown(ctx context.Context, tx models.Transaction, firstWindow, lastWindow []models.Session, ubTicketID string) bool {
 	atomic.AddUint64(&v.totalChecks, 1)
 
 	v.mu.RLock()
@@ -43,10 +43,13 @@ func (v *TxValidator) IsRegionAndDeviceKnown(ctx context.Context, tx models.Tran
 	// Internal helper to scan specific session windows.
 	check := func(sessions []models.Session, windowName string) bool {
 		for _, s := range sessions {
-			// A match is found if the device matches AND (City or Country matches).
 			if s.DeviceID == tx.DeviceID && (s.Country == tx.Country || s.City == tx.City) {
 				if logger != nil {
-					logger.Debugw("match found in window", "window", windowName, "device", s.DeviceID)
+					logger.Debugw("match found in window", 
+						"window", windowName, 
+						"device", s.DeviceID,
+						"ub_ticket_id", ubTicketID,
+					)
 				}
 				return true
 			}
@@ -54,7 +57,7 @@ func (v *TxValidator) IsRegionAndDeviceKnown(ctx context.Context, tx models.Tran
 		return false
 	}
 
-	known := check(history.FirstWindow, "first") || check(history.LastWindow, "last")
+	known := check(firstWindow, "first") || check(lastWindow, "last")
 	
 	if !known {
 		atomic.AddUint64(&v.fraudAlerts, 1)
@@ -62,6 +65,7 @@ func (v *TxValidator) IsRegionAndDeviceKnown(ctx context.Context, tx models.Tran
 			logger.Warnw("unknown region or device for transaction", 
 				"tx_id", tx.TransactionID, 
 				"device", tx.DeviceID,
+				"ub_ticket_id", ubTicketID,
 			)
 		}
 	}
@@ -69,7 +73,6 @@ func (v *TxValidator) IsRegionAndDeviceKnown(ctx context.Context, tx models.Tran
 }
 
 // CalculateWindowScore assigns a numerical confidence score based on session history.
-// It returns a normalized value [0.0, 1.0] representing the quality of the match.
 func (v *TxValidator) CalculateWindowScore(ctx context.Context, tx models.Transaction, history []models.Session) float64 {
 	if len(history) == 0 {
 		return 0
@@ -96,69 +99,60 @@ func (v *TxValidator) CalculateWindowScore(ctx context.Context, tx models.Transa
 	return maxScore / maxPossibleScore
 }
 
-// IsSuddenHighDonation detects if the transaction amount is significantly 
-// higher than the user's historical average or initial threshold.
-func (v *TxValidator) IsSuddenHighDonation(ctx context.Context, tx models.Transaction, history models.UserHistory) bool {
+// IsSuddenHighDonation detects if the transaction amount is significantly higher than average.
+func (v *TxValidator) IsSuddenHighDonation(ctx context.Context, tx models.Transaction, allPayments []models.Payment, ubTicketID string) bool {
 	v.mu.RLock()
 	logger := v.log
 	v.mu.RUnlock()
 
-	// Scenario 1: No payment history (First donation check).
-	if len(history.AllPayments) == 0 {
+	if len(allPayments) == 0 {
 		isHigh := tx.Amount >= constants.FirstDonationThreshold
 		if isHigh && logger != nil {
-			logger.Warnw(errors.ErrSuddenHighAmount.Error(), "amount", tx.Amount, "type", "first_donation")
+			logger.Warnw(errors.ErrSuddenHighAmount.Error(), 
+				"amount", tx.Amount, 
+				"type", "first_donation",
+				"ub_ticket_id", ubTicketID,
+			)
 		}
 		return isHigh
 	}
 
-	// Scenario 2: Compare against historical average.
 	var total float64
-	for _, p := range history.AllPayments {
+	for _, p := range allPayments {
 		total += p.Amount
 	}
-	avg := total / float64(len(history.AllPayments))
+	avg := total / float64(len(allPayments))
 	isSudden := tx.Amount > avg*constants.SuddenMultiplier
 
 	if isSudden && logger != nil {
 		logger.Warnw(errors.ErrSuddenHighAmount.Error(), 
 			"amount", tx.Amount, 
 			"avg", avg, 
-			"multiplier", constants.SuddenMultiplier,
+			"ub_ticket_id", ubTicketID,
 		)
 	}
 	return isSudden
 }
 
-// IsHighFrequencyTransaction detects "velocity" fraud by checking time intervals 
-// between the current transaction and previous ones.
-func (v *TxValidator) IsHighFrequencyTransaction(ctx context.Context, allPayments []models.Transaction, current models.Transaction) bool {
-	currentTime, err := time.Parse(time.RFC3339, current.Timestamp)
-	if err != nil {
-		v.mu.RLock()
-		if v.log != nil {
-			v.log.Errorw(errors.ErrTxTimeParse.Error(), "raw_timestamp", current.Timestamp, "err", err)
-		}
-		v.mu.RUnlock()
-		return false
-	}
+// IsHighFrequencyTransaction detects "velocity" fraud using direct time.Time comparison.
+func (v *TxValidator) IsHighFrequencyTransaction(ctx context.Context, allPayments []models.Payment, current models.Transaction, ubTicketID string) bool {
+	// current.Timestamp is already time.Time, no parsing needed.
+	currentTime := current.Timestamp 
 	
 	minInterval := time.Duration(constants.MinIntervalHours * float64(time.Hour))
-	for _, tx := range allPayments {
-		txTime, err := time.Parse(time.RFC3339, tx.Timestamp)
-		if err != nil {
-			continue 
+	for _, py := range allPayments {
+		// Assuming py.CreatedAt is time.Time in your Payment model.
+		diff := currentTime.Sub(py.CreatedAt)
+		if diff < 0 { 
+			diff = -diff 
 		}
-		
-		diff := currentTime.Sub(txTime)
-		if diff < 0 { diff = -diff }
 		
 		if diff < minInterval {
 			v.mu.RLock()
 			if v.log != nil {
 				v.log.Warnw(errors.ErrHighFreqTx.Error(), 
 					"diff_sec", diff.Seconds(), 
-					"limit_sec", minInterval.Seconds(),
+					"ub_ticket_id", ubTicketID,
 				)
 			}
 			v.mu.RUnlock()
@@ -168,12 +162,12 @@ func (v *TxValidator) IsHighFrequencyTransaction(ctx context.Context, allPayment
 	return false
 }
 
-// GetStats returns the number of checks performed and fraud alerts triggered.
+// GetStats returns metrics for checks and alerts.
 func (v *TxValidator) GetStats() (uint64, uint64) {
 	return atomic.LoadUint64(&v.totalChecks), atomic.LoadUint64(&v.fraudAlerts)
 }
 
-// SetLogger safely updates the logger instance at runtime.
+// SetLogger safely updates the logger instance.
 func (v *TxValidator) SetLogger(newLogger logPkg.Logger) {
 	v.mu.Lock()
 	defer v.mu.Unlock()

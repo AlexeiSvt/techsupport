@@ -42,8 +42,7 @@ func NewFirstTransactionScoreCalculator(logger logPkg.Logger) *FirstTransactionS
 }
 
 // Calculate orchestrates the transaction analysis process.
-// It skips the check if weights are zero and respects context cancellation.
-func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, user models.UserData, db models.DBRecord, weights models.Weights) models.CalcResult {
+func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, claim models.UserClaim, support models.SupportContext, db models.DBRecord, weights models.Weights) models.CalcResult {
 	atomic.AddUint64(&c.totalCalculations, 1)
 
 	// Early exit if context is cancelled.
@@ -66,7 +65,7 @@ func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, user mo
 	// Skip calculation if the policy weight is zero.
 	if weights.FirstTransaction <= 0 {
 		if logger != nil {
-			logger.Debugw("skipping transaction check", "reason", "weight is zero")
+			logger.Debugw("skipping transaction check", "reason", "weight is zero", "ub_ticket_id", claim.UBTicketID)
 		}
 		return models.CalcResult{
 			Name:    "First Transaction Check",
@@ -77,10 +76,14 @@ func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, user mo
 	}
 
 	if logger != nil {
-		logger.Debugw("starting first transaction analysis", "tx_id", user.UserClaim.FirstTransaction.TransactionID)
+		logger.Debugw("starting first transaction analysis", 
+			"tx_id", claim.FirstTransaction.TransactionID,
+			"ub_ticket_id", claim.UBTicketID,
+		)
 	}
 
-	res := c.checkFirstTransaction(ctx, db, user.UserClaim, validator)
+	// EXECUTION: Passing 'support' instead of 'db' to access History context.
+	res := c.checkFirstTransaction(ctx, claim, support, validator)
 
 	// If blocked by anomalies, track it in metrics.
 	if res.Status == errors.StatusAnomalyBlock {
@@ -101,6 +104,7 @@ func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, user mo
 		logger.Infow("transaction analysis finished",
 			"status", calcRes.Status,
 			"final_value", calcRes.Value,
+			"ub_ticket_id", claim.UBTicketID,
 		)
 	}
 
@@ -108,22 +112,31 @@ func (c *FirstTransactionScoreCalculator) Calculate(ctx context.Context, user mo
 }
 
 // checkFirstTransaction executes specific validation rules and applies penalties for anomalies.
-// It returns a zero score and a block status if two or more anomalies are detected.
-func (c *FirstTransactionScoreCalculator) checkFirstTransaction(ctx context.Context, dbRecord models.DBRecord, userClaim models.UserClaim, v *TxValidator) logic.RawTxResult {
-	tx := userClaim.FirstTransaction
+func (c *FirstTransactionScoreCalculator) checkFirstTransaction(
+	ctx context.Context, 
+	claim models.UserClaim, 
+	support models.SupportContext, 
+	v *TxValidator,
+) logic.RawTxResult {
+	tx := claim.FirstTransaction
 	var baseScore float64
 	anomalyCount := 0
 	comment := ""
 
-	// Evaluate match across historical windows.
-	scoreFirst := v.CalculateWindowScore(ctx, tx, dbRecord.UserHistory.FirstWindow)
-	scoreLast := v.CalculateWindowScore(ctx, tx, dbRecord.UserHistory.LastWindow)
+	// Pulling slices directly from the flattened SupportContext.History.
+	firstWindow := support.History.FirstWindow
+	lastWindow := support.History.LastWindow
+	allPayments := support.History.AllPayments
 
-	baseScore = max(scoreFirst, scoreLast)
+	// 1. Geography & Device Match Scoring.
+	scoreFirst := v.CalculateWindowScore(ctx, tx, firstWindow)
+	scoreLast := v.CalculateWindowScore(ctx, tx, lastWindow)
 
-	// Fallback check if window scoring fails.
+	baseScore = mathMax(scoreFirst, scoreLast)
+
+	// Fallback to boolean check if historical weight scoring is zero.
 	if baseScore == 0 {
-		if v.IsRegionAndDeviceKnown(ctx, tx, dbRecord.UserHistory) {
+		if v.IsRegionAndDeviceKnown(ctx, tx, firstWindow, lastWindow, claim.UBTicketID) {
 			baseScore = constants.PartialMatch
 			comment = "Known region and device found in history"
 		} else {
@@ -137,28 +150,32 @@ func (c *FirstTransactionScoreCalculator) checkFirstTransaction(ctx context.Cont
 		comment = fmt.Sprintf("Matched via session history (base: %.2f)", baseScore)
 	}
 
-	// Anomaly 1: High Frequency (Velocity check).
-	if v.IsHighFrequencyTransaction(ctx, dbRecord.UserHistory.AllPayments, tx) {
+	// 2. Anomaly Detection Phase.
+
+	// Anomaly: High Frequency (Velocity check).
+	if v.IsHighFrequencyTransaction(ctx, allPayments, tx, claim.UBTicketID) {
 		anomalyCount++
 		baseScore *= constants.MostlyMatch
 		comment += " | Anomaly: High frequency"
 	}
 
-	// Anomaly 2: Sudden High Donation (Amount check).
-	if v.IsSuddenHighDonation(ctx, tx, dbRecord.UserHistory) {
+	// Anomaly: Sudden High Donation (Amount check).
+	if v.IsSuddenHighDonation(ctx, tx, allPayments, claim.UBTicketID) {
 		anomalyCount++
 		baseScore *= constants.MostlyMatch
 		comment += " | Anomaly: Sudden high donation"
 	}
 
-	// Anomaly 3: Unknown Environment combination.
-	if !v.IsRegionAndDeviceKnown(ctx, tx, dbRecord.UserHistory) {
+	// Anomaly: Environmental Mismatch.
+	if !v.IsRegionAndDeviceKnown(ctx, tx, firstWindow, lastWindow, claim.UBTicketID) {
 		anomalyCount++
 		baseScore *= constants.MostlyMatch
 		comment += " | Anomaly: Unknown region/device combination"
 	}
 
-	// Anti-Fraud Policy: If 2 or more anomalies exist, block the transaction result.
+	// 3. Final Decision Logic.
+
+	// Anti-Fraud Policy: Cumulative anomalies result in a hard block.
 	if anomalyCount >= 2 {
 		return logic.RawTxResult{
 			Value:   0,
@@ -192,4 +209,12 @@ func (c *FirstTransactionScoreCalculator) SetLogger(newLogger logPkg.Logger) {
 	if c.validator != nil {
 		c.validator.SetLogger(newLogger)
 	}
+}
+
+// mathMax is a helper for float64 comparison.
+func mathMax(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }
