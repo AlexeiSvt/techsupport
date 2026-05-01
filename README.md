@@ -1,6 +1,6 @@
 # User Profiling & Trust Engine
 
--Neo4j storage is currently being implemented 
+-Neo4j storage is currently being implemented and models are being remade
 
 **User Profiling & Trust Engine** is a backend system designed to analyze user data, calculate trust scores, and support security-focused workflows such as identity verification and fraud detection.
 
@@ -114,7 +114,7 @@ Key aspects:
 - **SOLID principles**  
 - **KISS (Keep It Simple, Stupid)**  
 - Thread-safe design in critical components  
-- Fully documented codebase  
+- Fully documented codebase
 
 ---
 
@@ -149,7 +149,4 @@ Key aspects:
 
 ## Future Improvements
 
-- AI-based anomaly detection  
 - Advanced behavioral analytics  
-- Implement Websockets for real-time communication
-
