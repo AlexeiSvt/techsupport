@@ -6,11 +6,11 @@ import (
 	"techsupport/core/pkg/models"
 )
 
-// GetWeights returns a pre-defined set of scoring weights based on the user's donation status.
-// It branches the scoring logic into two main categories: Solvent (donators) and Insolvent (non-donators).
+// GetWeights returns a pre-defined set of scoring weights based on the user's solvent status.
+// It branches the scoring logic into two main categories: Solvent (users with financial history) and Insolvent (users without financial history).
 // This allows the engine to apply stricter or more relaxed validation rules depending on user history.
-func GetWeights(isDonator bool) models.Weights {
-	if isDonator {
+func GetWeights(isSolvent bool) models.Weights {
+	if isSolvent {
 		// Return weights optimized for users with a history of financial transactions (Solvent).
 		return models.Weights{
 			RegDate:          constants.Solvent_Weight_RegDate,

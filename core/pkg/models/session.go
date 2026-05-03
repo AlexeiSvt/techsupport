@@ -5,7 +5,7 @@ import "time"
 // Session represents a continuous authenticated period of user activity.
 // In a graph, comparing Session nodes against Transaction nodes helps 
 // identify proxy usage or account takeovers (ATO).
-type Session struct {
+type SessionNode struct {
     // SessionID is the unique token identifying this specific authenticated period.
     SessionID string `json:"session_id" cypher:"id"`
 

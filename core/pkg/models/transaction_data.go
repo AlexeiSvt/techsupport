@@ -5,7 +5,7 @@ import "time"
 // Transaction represents a financial or significant event within the system.
 // In a graph database, it is a discrete node used to calculate risk velocity 
 // and detect suspicious payment patterns across multiple accounts.
-type Transaction struct {
+type TransactionInfoNode struct {
     // TransactionID is the unique reference identifier from the payment provider or internal gateway.
     TransactionID string `json:"transaction_id" cypher:"id"`
 
@@ -45,7 +45,7 @@ type Transaction struct {
 
 // Payment represents a historical successful transaction.
 // In Neo4j, these are often nodes connected to the User via a :MADE_PAYMENT relationship.
-type Payment struct {
+type PaymentInfoNode struct {
     // PaymentID is the unique identifier for the processed payment.
     PaymentID string `json:"payment_id" cypher:"id"`
 
@@ -58,4 +58,7 @@ type Payment struct {
 
     // Status indicates the final state (e.g., "completed", "refunded").
     Status string `json:"status" cypher:"status"`
+
+    //Transaction nodes are connected to Payment nodes via a :MADE_PAYMENT relationship, which allows us to analyze the user's payment history and identify patterns of behavior that may indicate fraud or risk.
+    TransactionDetails []*TransactionInfoNode `json:"transaction_details" cypher:"-"`
 }
