@@ -6,7 +6,7 @@ import "time"
 // DBRecord represents the objective, historical state of a user account 
 // retrieved from the primary database (the "Truth"). This data serves 
 // as the verified baseline to validate claims and calculate risk scores.
-type DBRecord struct {
+type DBRecordInfoNode struct {
     // AccTag is the unique internal identifier or handle for the account.
     AccTag string `json:"acc_tag" cypher:"acc_tag"`
 

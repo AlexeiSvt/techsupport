@@ -2,6 +2,10 @@ package models
 
 import "time"
 
+// UserNode represents a user in the system, containing essential information 
+// for fraud detection and risk assessment.
+// In a graph database, it serves as a central node connected to various claims, 
+// tickets, and account history nodes.
 type UserNode struct {
 	// UserID is the unique identifier for the user in company's system.
 	UserID string `json:"user_id" cypher:"id"`
@@ -18,11 +22,15 @@ type UserNode struct {
 	UserClaimInfo []*ClaimInfoNode `json:"user_claims" cypher:"-"`
 
 	//Refers to the Ticket node that contains information about the support ticket,
-	// such as ticket status and contact date, which are crucial for understanding the context of the user's issue.
+	// such as ticket status and contact date, which are crucial for understanding the context 
+	// of the user's issue.
 	UserTicketInfo []*TicketNodeInfo `json:"user_ticket_info" cypher:"-"`
 }
 
 
+// Claim represents the assertions made by the user regarding their account and registration details.
+// In a graph database, it is a node connected to the User node, providing insights into the 
+// user's claims about their account, which can be used for fraud detection and risk assessment.
 type ClaimInfoNode struct {
 	// ClaimID is a unique identifier for this specific set of assertions made by the user.
 	ClaimID string `json:"claim_id" cypher:"id"`
@@ -48,6 +56,11 @@ type ClaimInfoNode struct {
 	AccountInfo []*AccountInfoNode `json:"account_info" cypher:"-"`
 }
 
+// AccountInfo represents the user's assertions about their financial standing and 
+// identity verification status.
+// In a graph database, it is a node connected to the Claim node, providing insights 
+// into the user's claims about their account's financial and verification status, 
+// which can be used for fraud detection and risk assessment.
 type AccountInfoNode struct {
 	// AccountInfoID is a unique identifier for this specific account information entry.
 	AccountInfoID string `json:"account_info_id" cypher:"id"`
@@ -62,6 +75,11 @@ type AccountInfoNode struct {
 	AccountHistory *[]AccountHistoryNodeInfo `json:"account_history" cypher:"-"`
 }
 
+// TicketNode represents the support ticket information related to 
+// the user's claims and interactions with customer support.
+// In a graph database, it is a node connected to the User node, 
+// providing insights into the user's interactions with support and the status of their issues,
+//  which can be used for fraud detection and risk assessment.
 type TicketNodeInfo struct {
 	// TicketID is the unique identifier for the support ticket.
 	TicketID string `json:"ticket_id" cypher:"id"`
@@ -85,4 +103,47 @@ type AccountHistoryNodeInfo struct {
 
 	// AllPayments contains all the payment transactions linked to the account, used for ownership proof and fraud detection.
 	AllPayments []*PaymentInfoNode `json:"all_payments" cypher:"-"`
+}
+
+// Session represents a continuous authenticated period of user activity.
+// In a graph, comparing Session nodes against Transaction nodes helps
+// identify proxy usage or account takeovers (ATO).
+type SessionNode struct {
+	// SessionID is the unique token identifying this specific authenticated period.
+	SessionID string `json:"session_id" cypher:"id"`
+
+	// SessionIP is the network address captured when the session was established.
+	SessionIP string `json:"session_ip" cypher:"ip"`
+
+	// DeviceID is the hardware identifier. Used to create a relationship with a Device node.
+	DeviceID string `json:"device_id" cypher:"device_id"`
+
+	// ASN is the Autonomous System Number (ISP) associated with the session's origin.
+	ASN string `json:"asn" cypher:"asn"`
+
+	// Country is the geographic origin of the session establishment.
+	Country string `json:"country" cypher:"country"`
+
+	// City is the specific city where the session originated.
+	City string `json:"city" cypher:"city"`
+
+	// StartTime is the RFC3339 timestamp of the login or session creation.
+	StartTime time.Time `json:"start_time" cypher:"start_time"`
+
+	// EndTime is the RFC3339 timestamp of logout or session expiration.
+	EndTime time.Time `json:"end_time" cypher:"end_time"`
+}
+
+
+// SupportContext represents the context of the user's support ticket, including the reason for contact and the communication channel used.
+// In a graph database, it is a node connected to the Ticket node, providing insights into the user's interactions with support and the context of their issues, which can be used for fraud detection and risk assessment.
+type SupportContextNodeInfo struct {
+	// Reason is the reason for contacting support (e.g., "Account Recovery").
+	Reason string `json:"reason" cypher:"reason"`
+
+	// OperatorID is the identifier of the support agent handling the ticket, which can be used to analyze patterns in support interactions.
+	OperatorID string `json:"operator_id" cypher:"operator_id"`
+
+	// Source is the communication channel used (e.g., "chat", "email", "phone"), which can provide insights into user behavior and preferences.
+	Source string `json:"source" cypher:"source"`
 }

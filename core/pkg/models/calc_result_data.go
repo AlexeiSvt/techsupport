@@ -4,7 +4,7 @@ package models
 // CalcResult represents the output of a single scoring rule or logic unit.
 // It provides transparency, allowing developers and auditors to see exactly 
 // how a specific rule influenced the final verdict.
-type CalcResult struct {
+type CalcResultInfoNode struct {
     // Name is the descriptive name of the rule (e.g., "IP Geolocation Match").
     Name string `json:"name" cypher:"name"`
 

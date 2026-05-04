@@ -38,7 +38,7 @@ func NewFirstDeviceCalculator(logger logPkg.Logger) *FirstDeviceCalculator {
 
 // Calculate compares user and database device records to produce a scoring result.
 // This method is designed to be executed within a goroutine and respects context cancellation.
-func (c *FirstDeviceCalculator) Calculate(ctx context.Context, claim models.UserClaim, support models.SupportContext, db models.DBRecord, weights models.Weights) models.CalcResult {
+func (c *FirstDeviceCalculator) Calculate(ctx context.Context, claim models.UserClaim, support models.SupportContextNodeInfo, db models.DBRecord, weights models.Weights) models.CalcResult {
     // Increment total calculations atomically to avoid race conditions.
     atomic.AddUint64(&c.totalCalculations, 1)
 
